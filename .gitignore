@@ -1,0 +1,17 @@
+# vim swap files
+.*.sw?
+.sw?
+
+# Nested build directory
+build
+
+# CLion project configuration
+.idea
+
+# vscode project configuration
+.vscode
+*.code-workspace
+
+# clangd
+.cache
+.clangd
