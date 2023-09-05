@@ -58,7 +58,7 @@ ninja
 ```
 
 Building `jit-calc` (once `LLVM` is built) requires flags to set the path to the
-`LLVM` build, the path to the `lit` tool (built during `LLVM` build). This setup
+`LLVM` build, and the path to the `lit` tool (built during `LLVM` build). This setup
 assumes that you have built `LLVM` (with MLIR enabled) in `$BUILD_DIR`. To build run
 ```sh
 mkdir build && cd build
