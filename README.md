@@ -13,18 +13,20 @@ instructions required to do a calculation. The calculator binary won't need
 to physically contain the instructions necessary to do the calculation, it
 can build them on the fly!
 
-This is hot stuff! Using LLVM, we can cut the calculator's binary size down
-by *dozens* of bytes, and we'll only need to pack a few gigs of compiler code
-in there to do so. Excellent. Trade.
+This is hot stuff! Using LLVM, we can cut the calculator's binary size down by
+*dozens* of bytes, and we'll only need to pack a few gigs of compiler code in
+there to do so! When the user requests some calculation be done, we can compile
+their request in *milliseconds*. A computer requires a single digit number of
+nanoseconds to execute a pre-compiled arithmetic instruction. Our users won't
+have to slog through that! This is an excellent trade.
 
 ----
 
 Next Steps:
- 1. Learn enough about ORC APIs to materialize a static MLIR function with CAPI
-    wrappers to add two numbers as a callable function.
- 1. Actually generate the MLIR based on command from user rather than relying on
-    a static pre written pile of it.
- 1. Extend the calculator into a golang compiler.
+
+- [x] Learn enough about ORC APIs to materialize a static MLIR function with CAPI wrappers to add two numbers as a callable function.
+- [ ] Rather than relying on a static pre written pile of code, actually generate the MLIR based on command from user.
+- [ ] Extend the calculator into a golang compiler.
 
 ## Building
 
