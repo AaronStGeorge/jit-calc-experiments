@@ -72,13 +72,19 @@ int main(int argc, char **argv) {
 
   std::cout << "Welcome to jit-calc! ===================================="
             << std::endl;
-  do {
+  // Process unput until user sends ctrl+d end-of-transmission character
+  while (!std::cin.eof()) {
     // maximum-hack-overdrive parse of user input
     int firstOperand;
     int secondOperand;
     std::string op;
     std::cout << "> ";
     std::cin >> firstOperand >> op >> secondOperand;
+
+    // error checking
+    if (std::cin.eof()) {
+      continue;
+    }
     if (op != "+") {
       std::cout << "only addition supported"
                 << "\n";
@@ -96,7 +102,9 @@ int main(int argc, char **argv) {
 
     // And lo there was math
     std::cout << result << std::endl;
-  } while (true);
+  }
+
+  std::cout << std::endl;
 
   return 0;
 }
