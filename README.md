@@ -24,9 +24,11 @@ have to slog through that! This is an excellent trade.
 
 Next Steps:
 
-- [x] Learn enough about ORC APIs to materialize a static MLIR function with CAPI wrappers to add two numbers as a callable function.
-- [ ] Rather than relying on a static pre written pile of code, actually generate the MLIR based on command from user.
-- [ ] Extend the calculator into a golang compiler.
+- [x] Learn enough about ORC APIs to materialize a static MLIR function with C ABI wrappers to add two numbers as a callable function.
+- [ ] Abandon all pretext that this is a calculator. Admit that it's a compiler + runtime system similar to a javascript engine.
+- [ ] Expand static MLIR blobs. Based on the given user command, the blobs should execute a more interesting operations than add, on more interesting runtime objects than intergers.
+- [ ] Rather than relying on a static pre-written pile of MLIR, actually generate the MLIR based on command from user.
+- [ ] Extend into golang compiler that can be an player programed NPC in a game.
 
 ## Building
 
