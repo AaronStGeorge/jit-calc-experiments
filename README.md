@@ -28,7 +28,7 @@ Next Steps:
 - [ ] Abandon all pretext that this is a calculator. Admit that it's a compiler + runtime system similar to a javascript engine.
 - [ ] Expand static MLIR blobs. Based on the given user command, the blobs should execute a more interesting operations than add, on more interesting runtime objects than intergers.
 - [ ] Rather than relying on a static pre-written pile of MLIR, actually generate the MLIR based on command from user.
-- [ ] Extend into golang compiler that can be an player programed NPC in a game.
+- [ ] Extend into golang compiler that enables player programed NPCs in a game.
 
 ## Building
 
