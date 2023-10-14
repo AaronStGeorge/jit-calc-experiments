@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20.0)
-project(jit-calc LANGUAGES CXX C)
+project(jit-calc-experiments LANGUAGES CXX C)
 
 set(CMAKE_BUILD_WITH_INSTALL_NAME_DIR ON)
 
@@ -22,12 +22,10 @@ include(AddLLVM)
 include(AddMLIR)
 include(HandleLLVMOptions)
 
-set(JIT_CALC_SOURCE_DIR ${PROJECT_SOURCE_DIR})
-set(JIT_CALC_BINARY_DIR ${PROJECT_BINARY_DIR})
 include_directories(${LLVM_INCLUDE_DIRS})
 include_directories(${MLIR_INCLUDE_DIRS})
-include_directories(${JIT_CALC_SOURCE_DIR}/include)
-include_directories(${JIT_CALC_BINARY_DIR}/include)
+include_directories(${PROJECT_SOURCE_DIR}/include)
+include_directories(${PROJECT_BINARY_DIR}/include)
 link_directories(${LLVM_BUILD_LIBRARY_DIR})
 add_definitions(${LLVM_DEFINITIONS})
 
