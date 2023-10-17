@@ -1,3 +1,4 @@
+#include <bits/types/stack_t.h>
 #include <signal.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -13,17 +14,12 @@
     exit(EXIT_FAILURE);                                                        \
   } while (0)
 
-struct user_fn_stack {
-  void *stack;
-  size_t num_bytes;
-};
-
 // Holds ucontext's associated with user_fn and user_fn_runner
 struct user_fn_state {
   ucontext_t uctx_main;
   ucontext_t uctx_user_fn;
   ucontext_t uctx_cleanup;
-  struct user_fn_stack user_fn_stack;
+  stack_t stack;
 };
 
 // This is our pretend user_fn
@@ -60,11 +56,8 @@ int user_fn_runner(struct user_fn_state *user_fn_state, void (*user_fn)()) {
     if (getcontext(&user_fn_state->uctx_user_fn) == -1) {
       handle_error("getcontext");
     }
-    user_fn_state->uctx_user_fn.uc_stack.ss_sp =
-        user_fn_state->user_fn_stack.stack;
-    user_fn_state->uctx_user_fn.uc_stack.ss_size =
-        user_fn_state->user_fn_stack.num_bytes * sizeof(uint8_t);
     user_fn_state->uctx_user_fn.uc_link = &user_fn_state->uctx_cleanup;
+    user_fn_state->uctx_user_fn.uc_stack = user_fn_state->stack;
     makecontext(&user_fn_state->uctx_user_fn, user_fn, 1, &user_fn_state);
 
     // setup uctx for cleanup function
@@ -140,18 +133,17 @@ int user_fn_runner(struct user_fn_state *user_fn_state, void (*user_fn)()) {
 }
 
 int main(int argc, char *argv[]) {
-  struct user_fn_stack user_fn_stack;
   // 1 Gb stack to support a *lot* of recursion
-  user_fn_stack.num_bytes = 1024 * 1024 * 1024;
-  user_fn_stack.stack = calloc(user_fn_stack.num_bytes, sizeof(uint8_t));
+  size_t user_fn_stack_num_bytes = 1024 * 1024 * 1024;
+  void *user_fn_stack = calloc(user_fn_stack_num_bytes, sizeof(uint8_t));
 
-  struct user_fn_state user_fn_state;
-  user_fn_state.user_fn_stack = user_fn_stack;
+  struct user_fn_state user_fn_state = {
+      .stack = {.ss_sp = user_fn_stack, .ss_size = user_fn_stack_num_bytes}};
 
   for (int i = 0; i < 10; i++) {
     user_fn_runner(&user_fn_state, fib);
   }
 
-  free(user_fn_stack.stack);
+  free(user_fn_stack);
   return 0;
 }
