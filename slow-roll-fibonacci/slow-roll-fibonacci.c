@@ -1,5 +1,7 @@
+#include <assert.h>
 #include <bits/types/stack_t.h>
 #include <signal.h>
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -14,6 +16,21 @@
     exit(EXIT_FAILURE);                                                        \
   } while (0)
 
+typedef struct {
+  uint32_t high;
+  uint32_t low;
+} unpacked_uint64_t;
+
+uint64_t pack(unpacked_uint64_t unpacked) {
+  return (uint64_t)unpacked.high << 32 | unpacked.low;
+}
+
+unpacked_uint64_t unpack(uint64_t packed) {
+  unpacked_uint64_t unpacked = {.low = (uint32_t)packed,
+                                .high = (uint32_t)(packed >> 32)};
+  return unpacked;
+}
+
 // Holds ucontext's associated with user_fn and user_fn_runner
 struct user_fn_state {
   ucontext_t uctx_main;
@@ -23,9 +40,17 @@ struct user_fn_state {
 };
 
 // This is our pretend user_fn
-static void fib(struct user_fn_state *user_fn_state) {
-  printf("%s: started\n", __func__);
+static void fib(int arg1_high, int arg1_low) {
+  unpacked_uint64_t arg1_packed = {.high = arg1_high, .low = arg1_low};
+  int *arg1 = (int *)pack(arg1_packed);
+  int n = *arg1;
+  printf("%s: started, n=%d\n", __func__, n);
+  uint64_t counter = 0;
   while (1) {
+    counter++;
+    if (counter % 10000000 == 0) {
+      printf("%s: running, n=%d\n", __func__, n);
+    }
   }
   printf("%s: returning\n", __func__);
 }
@@ -47,7 +72,12 @@ static void timer_signal_handler(int signum, siginfo_t *info, void *context) {
   swapcontext(&user_fn_state->uctx_user_fn, &user_fn_state->uctx_cleanup);
 }
 
-int user_fn_runner(struct user_fn_state *user_fn_state, void (*user_fn)()) {
+// makecontext only supports 32 bit arguments
+// https://github.com/bminor/glibc/blob/5ef608f36493c5d711418c5d31a7ebe710decc6e/sysdeps/unix/sysv/linux/x86_64/makecontext.c#L31-L52
+// so I think we need to break 64 bit pointers over two ints then stich them
+// back together which is obnoxious but whatever.
+int user_fn_runner(struct user_fn_state *user_fn_state, void (*user_fn)(),
+                   void *user_fn_arg) {
   { // setup contexts
     // 4 4k pages for cleanup function, it'll be fine
     uint8_t cleanup_stack[1024 * 4 * 4];
@@ -56,9 +86,11 @@ int user_fn_runner(struct user_fn_state *user_fn_state, void (*user_fn)()) {
     if (getcontext(&user_fn_state->uctx_user_fn) == -1) {
       handle_error("getcontext");
     }
+    unpacked_uint64_t arg_unpacked = unpack((uint64_t)user_fn_arg);
     user_fn_state->uctx_user_fn.uc_link = &user_fn_state->uctx_cleanup;
     user_fn_state->uctx_user_fn.uc_stack = user_fn_state->stack;
-    makecontext(&user_fn_state->uctx_user_fn, user_fn, 1, &user_fn_state);
+    makecontext(&user_fn_state->uctx_user_fn, user_fn, 2, arg_unpacked.high,
+                arg_unpacked.low);
 
     // setup uctx for cleanup function
     if (getcontext(&user_fn_state->uctx_cleanup) == -1) {
@@ -67,8 +99,7 @@ int user_fn_runner(struct user_fn_state *user_fn_state, void (*user_fn)()) {
     user_fn_state->uctx_cleanup.uc_stack.ss_sp = cleanup_stack;
     user_fn_state->uctx_cleanup.uc_stack.ss_size = sizeof(cleanup_stack);
     user_fn_state->uctx_cleanup.uc_link = &user_fn_state->uctx_main;
-    makecontext(&user_fn_state->uctx_cleanup, (void(*))cleanup, 1,
-                &user_fn_state);
+    makecontext(&user_fn_state->uctx_cleanup, (void(*))cleanup, 0);
   }
 
   timer_t timerid;
@@ -133,6 +164,9 @@ int user_fn_runner(struct user_fn_state *user_fn_state, void (*user_fn)()) {
 }
 
 int main(int argc, char *argv[]) {
+  uint64_t v = 0xFEDCBA9876543210;
+  assert(v == pack(unpack(v)));
+
   // 1 Gb stack to support a *lot* of recursion
   size_t user_fn_stack_num_bytes = 1024 * 1024 * 1024;
   void *user_fn_stack = calloc(user_fn_stack_num_bytes, sizeof(uint8_t));
@@ -141,7 +175,7 @@ int main(int argc, char *argv[]) {
       .stack = {.ss_sp = user_fn_stack, .ss_size = user_fn_stack_num_bytes}};
 
   for (int i = 0; i < 10; i++) {
-    user_fn_runner(&user_fn_state, fib);
+    user_fn_runner(&user_fn_state, fib, &i);
   }
 
   free(user_fn_stack);
