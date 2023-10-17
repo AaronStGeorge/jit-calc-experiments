@@ -35,7 +35,6 @@ unpacked_uint64_t unpack(uint64_t packed) {
 struct user_fn_state {
   ucontext_t uctx_main;
   ucontext_t uctx_user_fn;
-  ucontext_t uctx_cleanup;
   stack_t stack;
 };
 
@@ -55,12 +54,6 @@ static void fib(int arg1_high, int arg1_low) {
   printf("%s: returning\n", __func__);
 }
 
-// This will eventually be used to decide what return value to use
-static void cleanup(struct user_fn_state *user_fn_state) {
-  printf("%s: started\n", __func__);
-  printf("%s: returning\n", __func__);
-}
-
 // Using swapcontext like this in a signal handler is definitely not kosher, see
 // man signal-safety(7). That being said, if I understand the problem with using
 // swapcontext in a signal handler like this, the danger with doing this is
@@ -69,7 +62,7 @@ static void cleanup(struct user_fn_state *user_fn_state) {
 // any functions that make system calls, we're *likely* safe.
 static void timer_signal_handler(int signum, siginfo_t *info, void *context) {
   struct user_fn_state *user_fn_state = info->si_value.sival_ptr;
-  swapcontext(&user_fn_state->uctx_user_fn, &user_fn_state->uctx_cleanup);
+  swapcontext(&user_fn_state->uctx_user_fn, &user_fn_state->uctx_main);
 }
 
 // makecontext only supports 32 bit arguments
@@ -79,27 +72,15 @@ static void timer_signal_handler(int signum, siginfo_t *info, void *context) {
 int user_fn_runner(struct user_fn_state *user_fn_state, void (*user_fn)(),
                    void *user_fn_arg) {
   { // setup contexts
-    // 4 4k pages for cleanup function, it'll be fine
-    uint8_t cleanup_stack[1024 * 4 * 4];
-
     // setup uctx for user_fn
     if (getcontext(&user_fn_state->uctx_user_fn) == -1) {
       handle_error("getcontext");
     }
     unpacked_uint64_t arg_unpacked = unpack((uint64_t)user_fn_arg);
-    user_fn_state->uctx_user_fn.uc_link = &user_fn_state->uctx_cleanup;
+    user_fn_state->uctx_user_fn.uc_link = &user_fn_state->uctx_main;
     user_fn_state->uctx_user_fn.uc_stack = user_fn_state->stack;
     makecontext(&user_fn_state->uctx_user_fn, user_fn, 2, arg_unpacked.high,
                 arg_unpacked.low);
-
-    // setup uctx for cleanup function
-    if (getcontext(&user_fn_state->uctx_cleanup) == -1) {
-      handle_error("getcontext");
-    }
-    user_fn_state->uctx_cleanup.uc_stack.ss_sp = cleanup_stack;
-    user_fn_state->uctx_cleanup.uc_stack.ss_size = sizeof(cleanup_stack);
-    user_fn_state->uctx_cleanup.uc_link = &user_fn_state->uctx_main;
-    makecontext(&user_fn_state->uctx_cleanup, (void(*))cleanup, 0);
   }
 
   timer_t timerid;
