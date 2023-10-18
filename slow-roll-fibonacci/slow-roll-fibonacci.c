@@ -33,16 +33,38 @@ unpacked_uint64_t unpack(uint64_t packed) {
 
 // Holds ucontext's associated with user_fn and user_fn_runner
 struct user_fn_state {
+  int default_or_previous_return_value;
+  int return_value;
+  bool needs_new_context;
   ucontext_t uctx_main;
   ucontext_t uctx_user_fn;
   stack_t stack;
 };
 
 // This is our pretend user_fn
-static void fib(int arg1_high, int arg1_low) {
-  unpacked_uint64_t arg1_packed = {.high = arg1_high, .low = arg1_low};
-  int *arg1 = (int *)pack(arg1_packed);
-  int n = *arg1;
+static void fib(int did_return_high, int did_return_low, int return_value_high,
+                int return_value_low, int arg_high, int arg1_low) {
+  int n;
+  {
+    unpacked_uint64_t arg_packed = {.high = arg_high, .low = arg1_low};
+    int *arg = (int *)pack(arg_packed);
+    n = *arg;
+  }
+
+  int *return_value;
+  {
+    unpacked_uint64_t return_value_packed = {.high = return_value_high,
+                                             .low = return_value_low};
+    return_value = (int *)pack(return_value_packed);
+  }
+
+  bool *did_return;
+  {
+    unpacked_uint64_t did_return_packed = {.high = did_return_high,
+                                           .low = did_return_low};
+    did_return = (bool *)pack(did_return_packed);
+  }
+
   printf("%s: started, n=%d\n", __func__, n);
   uint64_t counter = 0;
   while (1) {
@@ -51,6 +73,8 @@ static void fib(int arg1_high, int arg1_low) {
       printf("%s: running, n=%d\n", __func__, n);
     }
   }
+  *return_value = 69;
+  *did_return = true;
   printf("%s: returning\n", __func__);
 }
 
@@ -69,18 +93,27 @@ static void timer_signal_handler(int signum, siginfo_t *info, void *context) {
 // https://github.com/bminor/glibc/blob/5ef608f36493c5d711418c5d31a7ebe710decc6e/sysdeps/unix/sysv/linux/x86_64/makecontext.c#L31-L52
 // so I think we need to break 64 bit pointers over two ints then stich them
 // back together which is obnoxious but whatever.
-int user_fn_runner(struct user_fn_state *user_fn_state, void (*user_fn)(),
-                   void *user_fn_arg) {
-  { // setup contexts
+int run_user_fn(struct user_fn_state *user_fn_state, void (*user_fn)(),
+                int user_fn_arg) {
+  // setup uctx_user
+  if (user_fn_state->needs_new_context) {
+    user_fn_state->needs_new_context = false;
     // setup uctx for user_fn
     if (getcontext(&user_fn_state->uctx_user_fn) == -1) {
       handle_error("getcontext");
     }
-    unpacked_uint64_t arg_unpacked = unpack((uint64_t)user_fn_arg);
+    unpacked_uint64_t did_return_unpacked =
+        unpack((uint64_t)&user_fn_state->needs_new_context);
+    unpacked_uint64_t return_value_unpacked =
+        unpack((uint64_t)&user_fn_state->return_value);
+    unpacked_uint64_t arg_unpacked = unpack((uint64_t)&user_fn_arg);
     user_fn_state->uctx_user_fn.uc_link = &user_fn_state->uctx_main;
     user_fn_state->uctx_user_fn.uc_stack = user_fn_state->stack;
-    makecontext(&user_fn_state->uctx_user_fn, user_fn, 2, arg_unpacked.high,
-                arg_unpacked.low);
+    makecontext(
+        &user_fn_state->uctx_user_fn, user_fn, 6,
+        /*did_return*/ did_return_unpacked.high, did_return_unpacked.low,
+        /*return_value*/ return_value_unpacked.high, return_value_unpacked.low,
+        /*arg*/ arg_unpacked.high, arg_unpacked.low);
   }
 
   timer_t timerid;
@@ -136,15 +169,18 @@ int user_fn_runner(struct user_fn_state *user_fn_state, void (*user_fn)(),
       -1) {
     handle_error("swapcontext");
   }
-
+  // Either through timer expiry, or function completion we've reached the end
+  // of this call. The timer is no longer required.
   if (timer_delete(timerid) == -1) {
     perror("timer_delete");
   }
+
   printf("%s: exiting\n", __func__);
   return 0;
 }
 
 int main(int argc, char *argv[]) {
+  // test of pack and unpack function
   uint64_t v = 0xFEDCBA9876543210;
   assert(v == pack(unpack(v)));
 
@@ -153,10 +189,11 @@ int main(int argc, char *argv[]) {
   void *user_fn_stack = calloc(user_fn_stack_num_bytes, sizeof(uint8_t));
 
   struct user_fn_state user_fn_state = {
+      .needs_new_context = true,
       .stack = {.ss_sp = user_fn_stack, .ss_size = user_fn_stack_num_bytes}};
 
   for (int i = 0; i < 10; i++) {
-    user_fn_runner(&user_fn_state, fib, &i);
+    run_user_fn(&user_fn_state, fib, i);
   }
 
   free(user_fn_stack);
