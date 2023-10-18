@@ -16,6 +16,27 @@
     exit(EXIT_FAILURE);                                                        \
   } while (0)
 
+// This represents what would be a game function
+static int fast_fib(int n) {
+  int i = 0;
+  int j = 1;
+
+  for (int c = 0; c < n; c++) {
+    int tmp = i + j;
+    i = j;
+    j = tmp;
+  }
+  return i;
+}
+
+// This represents what would be a user function
+static int slow_fib(int n) {
+  if (n <= 1) {
+    return n;
+  }
+  return slow_fib(n - 2) + slow_fib(n - 1);
+}
+
 typedef struct {
   uint32_t high;
   uint32_t low;
@@ -31,7 +52,7 @@ unpacked_uint64_t unpack(uint64_t packed) {
   return unpacked;
 }
 
-// Holds ucontext's associated with user_fn and user_fn_runner
+// Blob of state associated with user_fn, could probably be broken up a bit.
 struct user_fn_state {
   int default_or_previous_return_value;
   int return_value;
@@ -41,9 +62,10 @@ struct user_fn_state {
   stack_t stack;
 };
 
-// This is our pretend user_fn
-static void fib(int did_return_high, int did_return_low, int return_value_high,
-                int return_value_low, int arg_high, int arg1_low) {
+// We would probably want to auto-generate wrapper functions like this
+static void fib_wrapper(int did_return_high, int did_return_low,
+                        int return_value_high, int return_value_low,
+                        int arg_high, int arg1_low) {
   int n;
   {
     unpacked_uint64_t arg_packed = {.high = arg_high, .low = arg1_low};
@@ -65,17 +87,12 @@ static void fib(int did_return_high, int did_return_low, int return_value_high,
     did_return = (bool *)pack(did_return_packed);
   }
 
-  printf("%s: started, n=%d\n", __func__, n);
-  uint64_t counter = 0;
-  while (1) {
-    counter++;
-    if (counter % 10000000 == 0) {
-      printf("%s: running, n=%d\n", __func__, n);
-    }
-  }
-  *return_value = 69;
+  *return_value = slow_fib(n);
+  // Writing a value of machine word size to a ptr and reading it in same thread
+  // should be atomic. did_return functions sort of like a lock around
+  // return_value which could (but doesn't in this case) require multiple write
+  // instructions (that might be interrupted by signal handler).
   *did_return = true;
-  printf("%s: returning\n", __func__);
 }
 
 // Using swapcontext like this in a signal handler is definitely not kosher, see
@@ -89,12 +106,11 @@ static void timer_signal_handler(int signum, siginfo_t *info, void *context) {
   swapcontext(&user_fn_state->uctx_user_fn, &user_fn_state->uctx_main);
 }
 
-// makecontext only supports 32 bit arguments
-// https://github.com/bminor/glibc/blob/5ef608f36493c5d711418c5d31a7ebe710decc6e/sysdeps/unix/sysv/linux/x86_64/makecontext.c#L31-L52
-// so I think we need to break 64 bit pointers over two ints then stich them
-// back together which is obnoxious but whatever.
-int run_user_fn(struct user_fn_state *user_fn_state, void (*user_fn)(),
-                int user_fn_arg) {
+// run_user_fn runs user_fn from starting state in user_fn_state for
+// runtime_nsec nanoseconds. run_user_fn returns result if user_fn completes,
+// and previous result (from user_fn_state) if user_fn doesn't complete.
+int run_user_fn(long int runtime_nsec, struct user_fn_state *user_fn_state,
+                void (*user_fn)(), int user_fn_arg) {
   // setup uctx_user
   if (user_fn_state->needs_new_context) {
     user_fn_state->needs_new_context = false;
@@ -102,10 +118,16 @@ int run_user_fn(struct user_fn_state *user_fn_state, void (*user_fn)(),
     if (getcontext(&user_fn_state->uctx_user_fn) == -1) {
       handle_error("getcontext");
     }
+
+    // makecontext only supports 32 bit arguments
+    // https://github.com/bminor/glibc/blob/5ef608f36493c5d711418c5d31a7ebe710decc6e/sysdeps/unix/sysv/linux/x86_64/makecontext.c#L31-L52
+    // so we need to break 64 bit pointers over two ints then stich them back
+    // together. Obnoxious, but whatever.
     unpacked_uint64_t did_return_unpacked =
         unpack((uint64_t)&user_fn_state->needs_new_context);
     unpacked_uint64_t return_value_unpacked =
         unpack((uint64_t)&user_fn_state->return_value);
+    // Doesn't need to be ptr, pass as ptr just for uniformity.
     unpacked_uint64_t arg_unpacked = unpack((uint64_t)&user_fn_arg);
     user_fn_state->uctx_user_fn.uc_link = &user_fn_state->uctx_main;
     user_fn_state->uctx_user_fn.uc_stack = user_fn_state->stack;
@@ -123,7 +145,7 @@ int run_user_fn(struct user_fn_state *user_fn_state, void (*user_fn)(),
     // to interrupt handler.
     struct sigaction sa;
     // sa_mask causes signals received  while handler is executing to be
-    // deferred until handler returns. Our handler is attached to the SIGPROF
+    // deferred until handler returns. Our handler is attached to the SIGRTMIN
     // signal, so masking it will prevent our handler interrupting itself. We
     // likely don't need to worry about that since our handler is only run once,
     // but doesn't hurt.
@@ -131,7 +153,8 @@ int run_user_fn(struct user_fn_state *user_fn_state, void (*user_fn)(),
     sigaddset(&sa.sa_mask, SIGRTMIN); //
     // SA_RESTART - restart system calls like read and write if interrupted by
     //              handler.
-    // SA_SIGINFO - use 3 argument version of handler (that includes )
+    // SA_SIGINFO - use 3 argument version of handler function, there's also a 1
+    //              argument version
     sa.sa_flags = SA_RESTART | SA_SIGINFO;
     sa.sa_sigaction = timer_signal_handler;
     if ((sigaction(SIGRTMIN, &sa, NULL)) != 0) {
@@ -150,12 +173,7 @@ int run_user_fn(struct user_fn_state *user_fn_state, void (*user_fn)(),
 
     struct itimerspec its;
     its.it_value.tv_sec = 0;
-    // How 300 microseconds was chosen:
-    //  - 30 fps equates to 33.33 milliseconds per frame.
-    //  - With some overhead that means we get about 30 milliseconds per frame.
-    //  - To run 100 robots in 30 milliseconds, each gets 300 microseconds.
-    its.it_value.tv_nsec = 300 * 1000; // nanoseconds = microseconds * 1000;
-    its.it_value.tv_nsec *= 1000;      // slow it down
+    its.it_value.tv_nsec = runtime_nsec;
     its.it_interval.tv_sec = 0;
     its.it_interval.tv_nsec = 0;
 
@@ -164,7 +182,7 @@ int run_user_fn(struct user_fn_state *user_fn_state, void (*user_fn)(),
     }
   }
 
-  printf("%s: swapcontext(&thing.uctx_main, &thing.uctx_user_fn)\n", __func__);
+  // "call" user_fn.
   if (swapcontext(&user_fn_state->uctx_main, &user_fn_state->uctx_user_fn) ==
       -1) {
     handle_error("swapcontext");
@@ -175,8 +193,13 @@ int run_user_fn(struct user_fn_state *user_fn_state, void (*user_fn)(),
     perror("timer_delete");
   }
 
-  printf("%s: exiting\n", __func__);
-  return 0;
+  // We only need a new context if user_fn completed
+  if (user_fn_state->needs_new_context) {
+    user_fn_state->default_or_previous_return_value =
+        user_fn_state->return_value;
+  }
+
+  return user_fn_state->return_value;
 }
 
 int main(int argc, char *argv[]) {
@@ -192,8 +215,19 @@ int main(int argc, char *argv[]) {
       .needs_new_context = true,
       .stack = {.ss_sp = user_fn_stack, .ss_size = user_fn_stack_num_bytes}};
 
-  for (int i = 0; i < 10; i++) {
-    run_user_fn(&user_fn_state, fib, i);
+  // How 300 microseconds was chosen:
+  //  - 30 fps equates to 33.33 milliseconds per frame.
+  //  - With some overhead that means we get about 30 milliseconds to compute
+  //    a frame.
+  //  - To run 100 robots in 30 milliseconds, each gets 300 microseconds.
+  long int runtime_nsec = 300 * 1000; // nanoseconds = microseconds * 1000;
+
+  printf("Fibonacci game!\n");
+  printf("%6s %6s\n", "game", "user");
+  for (int i = 0; i < 30; i++) {
+    int slow_roll = run_user_fn(runtime_nsec, &user_fn_state, fib_wrapper, i);
+    int fast_roll = fast_fib(i);
+    printf("%6d %6d\n", fast_roll, slow_roll);
   }
 
   free(user_fn_stack);
