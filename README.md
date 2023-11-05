@@ -6,14 +6,20 @@ robots execute player code.
 
 ## Building
 
-This project builds with [`CMake`](https://cmake.org/) and depends on
-[`LLVM`](https://github.com/llvm/llvm-project). An existing source build of
-`LLVM` is required before building `jit-calc-experiments`.
+Look, "experiments" is in the name, there's going to be some weird shit.
+`jit-calc-experiments` requires:
+
+- A machine with the [Netwide Assembler](https://www.nasm.us/) installed.
+- An x86_64 machine (currently).
+- An LLVM source build.
+
+### LLVM Source build
 
 The `LLVM` docs have great [instructions on how to build
-LLVM](https://llvm.org/docs/CMake.html). `jit-calc-experiments` requires a
-few `LLVM` utilities and projects to be enabled that aren't part of a regular
-build. An example `LLVM` build with the required flags is shown here
+LLVM](https://llvm.org/docs/CMake.html). `jit-calc-experiments` needs a few
+`LLVM` utilities and projects to be enabled that aren't part of a regular build.
+An example `LLVM` build with the required flags is shown here.
+`jit-calc-experiments` isn't fussy about _where_ you build LLVM.
 ```sh
 # shallow clone of llvm to save time
 git clone --depth 1 https://github.com/llvm/llvm-project.git
@@ -32,11 +38,12 @@ cmake -G Ninja ../llvm \
 # build all targets
 ninja
 ```
+### Building `jit-calc-experiments`
 
-Building `jit-calc-experiments` (once `LLVM` is built) requires flags to set
-the path to the `LLVM` build, and the path to the `lit` tool (built during
-`LLVM` build). This setup assumes that you have built `LLVM` (with MLIR enabled)
-in `$BUILD_DIR`. To build run
+Building `jit-calc-experiments` requires flags to set the path to the `LLVM`
+build, and the path to the `lit` tool (built during `LLVM` build). This setup
+assumes that you have built `LLVM` (with MLIR enabled) in `$BUILD_DIR`. To build
+run
 ```sh
 mkdir build && cd build
 # generate build script

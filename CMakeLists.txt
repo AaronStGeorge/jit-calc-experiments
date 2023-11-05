@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20.0)
-project(jit-calc-experiments LANGUAGES CXX C)
+project(jit-calc-experiments LANGUAGES CXX C ASM_NASM)
 
 set(CMAKE_BUILD_WITH_INSTALL_NAME_DIR ON)
 
@@ -31,3 +31,4 @@ add_definitions(${LLVM_DEFINITIONS})
 
 add_subdirectory(jit-calc)
 add_subdirectory(slow-roll-fibonacci)
+add_subdirectory(count-to-n)
