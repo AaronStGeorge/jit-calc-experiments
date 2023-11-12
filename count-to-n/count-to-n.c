@@ -14,24 +14,29 @@ struct context {
   uint64_t rbp;
 };
 
-static struct context main_ctx;
-static struct context thread_ctx;
-
 bool swap(struct context *from, struct context *to);
 void stop(struct context *from, struct context *to);
-bool start(struct context *from, struct context *to, void *arg_ptr);
+bool start(struct context *from, struct context *to, void *arg_ptr,
+           void *return_ptr);
 
-void thread_fn(int *arg_ptr) {
+void thread_fn(struct context *main_ctx, struct context *thread_ctx,
+               int *arg_ptr, int *return_ptr) {
+  int n = *arg_ptr;
   int i = 0;
-  for (; i < *arg_ptr; i++) {
+  for (; i < n; i++) {
     printf("in thread i=%d\n", i);
-    swap(&thread_ctx, &main_ctx);
+    swap(thread_ctx, main_ctx);
   }
   printf("in thread i=%d\n", i);
-  stop(&thread_ctx, &main_ctx);
+  *return_ptr = n;
+  stop(thread_ctx, main_ctx);
 }
 
 int main(int argc, char **argv) {
+
+  struct context main_ctx;
+  struct context thread_ctx;
+
   printf("Starting main\n");
   size_t stack_size = 4 * 1024;
   char *stack = calloc(stack_size, sizeof(char));
@@ -40,8 +45,9 @@ int main(int argc, char **argv) {
   thread_ctx.rsp = (uint64_t)&stack[stack_size - 16];
 
   int swaps = 9;
+  int return_val = -1;
   int i = 0;
-  bool s = start(&main_ctx, &thread_ctx, &swaps);
+  bool s = start(&main_ctx, &thread_ctx, &swaps, &return_val);
   printf("in main i=%d\n", i);
   while (!s) {
     i++;
@@ -49,5 +55,5 @@ int main(int argc, char **argv) {
     printf("in main i=%d\n", i);
   }
 
-  printf("Exiting from main\n");
+  printf("Exiting from main, return_val=%d\n", return_val);
 }

@@ -31,7 +31,6 @@ swap:
 
 start:
 	swap_macro
-	mov qword rdi, rdx
 	ret
 
 stop:
