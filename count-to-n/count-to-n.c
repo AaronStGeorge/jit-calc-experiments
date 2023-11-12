@@ -47,11 +47,11 @@ int main(int argc, char **argv) {
   int swaps = 9;
   int return_val = -1;
   int i = 0;
-  bool s = start(&main_ctx, &thread_ctx, &swaps, &return_val);
+  bool done = start(&main_ctx, &thread_ctx, &swaps, &return_val);
   printf("in main i=%d\n", i);
-  while (!s) {
+  while (!done) {
     i++;
-    s = swap(&main_ctx, &thread_ctx);
+    done = swap(&main_ctx, &thread_ctx);
     printf("in main i=%d\n", i);
   }
 
