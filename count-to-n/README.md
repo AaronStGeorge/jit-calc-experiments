@@ -2,12 +2,12 @@
 
 ## Why
 
-Much is right in the way [`slow-roll-fibonacci`](../slow-roll-fibonacci) does
-things. Each player program has a known stack size, a player program's stack
-isn't connected to the game code's stack, a player's program can be paused and
-restarted, return values from a previous run of a player's program can be used
-as the current return value, the memory used by the player's program(s) can be
-inspected by the game code. Things are pretty great.
+Much is right in the way [`slow-roll-fibonacci-1`](../slow-roll-fibonacci-1)
+does things. Each player program has a known stack size, a player program's
+stack isn't connected to the game code's stack, a player's program can be paused
+and restarted, return values from a previous run of a player's program can be
+used as the current return value, the memory used by the player's program(s) can
+be inspected by the game code. Things are pretty great.
 
 But, there's some issues too. The whole preemptive scheduling thing is fun, but
 [unless we're super careful][summon] it will [summon the giant lake
@@ -15,7 +15,7 @@ troll][a_troll] of undefined behavior, which would not be fun. `swapcontext`ing
 in and out of a player's programs willy-nilly requires a lot of care around
 re-entrancy. Being careful is hard.
 
-We could solve the same problems `slow-roll-fibonacci` was addressing with
+We could solve the same problems `slow-roll-fibonacci-1` was addressing with
 cooperative multitasking. Player programs would swap back to game code with a
 `yield` call and game code back into a players program with a `run` call... But
 that would never work, we can't trust the players to insert `yield` calls into
