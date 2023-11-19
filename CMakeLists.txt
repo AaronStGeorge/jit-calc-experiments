@@ -33,3 +33,8 @@ add_subdirectory(count-to-n)
 add_subdirectory(jit-calc)
 add_subdirectory(slow-roll-fibonacci-1)
 add_subdirectory(slow-roll-fibonacci-2)
+
+# JIT_CALC_EXPERIMENTS_(SOURCE_DIR|BINARY_DIR) are required by testing build
+set(JIT_CALC_EXPERIMENTS_SOURCE_DIR ${PROJECT_SOURCE_DIR})
+set(JIT_CALC_EXPERIMENTS_BINARY_DIR ${PROJECT_BINARY_DIR})
+add_subdirectory(test)
