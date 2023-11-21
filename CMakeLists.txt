@@ -29,10 +29,8 @@ include_directories(${PROJECT_BINARY_DIR}/include)
 link_directories(${LLVM_BUILD_LIBRARY_DIR})
 add_definitions(${LLVM_DEFINITIONS})
 
-add_subdirectory(count-to-n)
-add_subdirectory(jit-calc)
-add_subdirectory(slow-roll-fibonacci-1)
-add_subdirectory(slow-roll-fibonacci-2)
+add_subdirectory(lib)
+add_subdirectory(experiments)
 
 # JIT_CALC_EXPERIMENTS_(SOURCE_DIR|BINARY_DIR) are required by testing build
 set(JIT_CALC_EXPERIMENTS_SOURCE_DIR ${PROJECT_SOURCE_DIR})

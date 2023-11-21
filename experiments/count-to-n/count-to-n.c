@@ -4,6 +4,8 @@
 #include <stdlib.h>
 #include <sys/types.h>
 
+#include "HomeRolledCoroutines/HomeRolledCoroutines.h"
+
 struct context {
   uint64_t rsp;
   uint64_t r15;
@@ -14,10 +16,6 @@ struct context {
   uint64_t rbp;
 };
 
-bool swap(struct context *from, struct context *to);
-void stop(struct context *from, struct context *to);
-bool start(struct context *from, struct context *to, void *arg_ptr,
-           void *return_ptr);
 
 void thread_fn(struct context *main_ctx, struct context *thread_ctx,
                int *arg_ptr, int *return_ptr) {

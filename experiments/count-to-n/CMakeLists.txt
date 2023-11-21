@@ -1,4 +1,5 @@
-add_executable(count-to-n count-to-n.c asm.asm)
+add_executable(count-to-n count-to-n.c )
+target_link_libraries(count-to-n HomeRolledCoroutines)
 set_target_properties(count-to-n
 				PROPERTIES
 				RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"

@@ -30,15 +30,17 @@
 //        equates to 400 operations if each operation is equally costly.
 //      - this could be existing MLIR dialects or a new one that maps fairly
 //        straight-forwardly to LLVM
-// -[ ] create an initial version of the VM
+// -[ ] swap in and out of fibonacci at least once using library developed in
+//      count-to-n maybe just swapping out every instruction
+// -[ ] create an initial version of the "VM"
 //      - maybe create a standalone tool for parsing VM IR with pyparsing or
 //      something?
 // -[ ] lower MLIR fibonacci to VM dialect(s).
 // -[ ] write an MLIR pass to insert the swap calls behind the hood after
 //      everything
-// -[ ] swap in and out of fibonacci at least once using library developed in
-//      count-to-n maybe just swapping out every instruction
 // -[ ] count number of instructions swap out when number is over
+
+void myFuction() { std::cout << "called" << std::endl; }
 
 int main(int argc, char **argv) {
   // LLVM init
@@ -66,7 +68,9 @@ int main(int argc, char **argv) {
 
   // Parse static mlir function
   std::string moduleStr = R"mlir(
+  func.func private @myFunction() -> ()
   func.func @fib(%n : index) -> i32 attributes { llvm.emit_c_interface } {
+    func.call @myFunction() : () -> ()
     %c0_index	 = arith.constant 0 : index
     %c1_index	 = arith.constant 1 : index
 
@@ -111,6 +115,15 @@ int main(int argc, char **argv) {
     return 1;
   }
   std::unique_ptr<mlir::ExecutionEngine> jit = std::move(jitOrError.get());
+
+  // Make symbol for "myFunction" available in jit
+  jit->registerSymbols([&](llvm::orc::MangleAndInterner interner) {
+    llvm::orc::SymbolMap symbolMap;
+    symbolMap[interner("myFunction")] = {
+        llvm::orc::ExecutorAddr::fromPtr(myFuction),
+        llvm::JITSymbolFlags::Exported};
+    return symbolMap;
+  });
 
   // Process unput until user sends ctrl+d end-of-transmission character
   while (!std::cin.eof()) {

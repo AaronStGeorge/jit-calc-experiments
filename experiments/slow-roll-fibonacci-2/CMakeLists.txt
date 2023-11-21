@@ -19,6 +19,7 @@ target_link_libraries(slow-roll-fibonacci-2 PRIVATE
   MLIRParser
   MLIRTargetLLVMIRExport
   MLIRSupport
+  HomeRolledCoroutines
   )
 
 mlir_check_all_link_libraries(slow-roll-fibonacci-2)

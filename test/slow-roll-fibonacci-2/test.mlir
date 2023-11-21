@@ -1,15 +1,16 @@
 // RUN: mlir-opt %s \
 // RUN: 	-convert-scf-to-cf \
+// RUN:		-mem2reg \
 // RUN: 	-convert-cf-to-llvm \
 // RUN: 	-convert-vector-to-llvm \
 // RUN: 	-convert-arith-to-llvm \
 // RUN: 	-finalize-memref-to-llvm \
 // RUN: 	-convert-func-to-llvm \
-// RUN: 	-reconcile-unrealized-casts \
-// RUN:		| mlir-cpu-runner \
-// RUN:			-e entry \
-// RUN:			-entry-point-result=void \
-// RUN:			-shared-libs=%mlir_lib_dir/libmlir_c_runner_utils.so
+// RUN: 	-reconcile-unrealized-casts
+// 		| mlir-cpu-runner \
+// 			-e entry \
+// 			-entry-point-result=void \
+// 			-shared-libs=%mlir_lib_dir/libmlir_c_runner_utils.so
 
 
 // int i = 0;
