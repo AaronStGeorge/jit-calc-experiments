@@ -18,7 +18,9 @@
 #include "mlir/Pass/PassManager.h"
 #include "mlir/Target/LLVMIR/Dialect/Builtin/BuiltinToLLVMIRTranslation.h"
 #include "mlir/Target/LLVMIR/Dialect/LLVMIR/LLVMToLLVMIRTranslation.h"
+#include "llvm/LineEditor/LineEditor.h"
 #include "llvm/Support/TargetSelect.h"
+
 #include <cstdint>
 
 // steps
@@ -126,17 +128,11 @@ int main(int argc, char **argv) {
   });
 
   // Process unput until user sends ctrl+d end-of-transmission character
-  while (!std::cin.eof()) {
+  llvm::LineEditor LineEditor("");
+  while (auto line = LineEditor.readLine()) {
     // maximum-hack-overdrive parse of user input
     uint64_t n;
-    std::string op;
-    std::cout << "> ";
-    std::cin >> n;
-
-    // error checking
-    if (std::cin.eof()) {
-      continue;
-    }
+    std::stringstream(*line) >> n;
 
     // run our jit-ed function
     int result = 0;
@@ -150,7 +146,5 @@ int main(int argc, char **argv) {
     // And lo there was math
     std::cout << result << std::endl;
   }
-
-  std::cout << std::endl;
   return 0;
 }

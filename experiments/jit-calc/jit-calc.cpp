@@ -18,6 +18,7 @@
 #include "mlir/Target/LLVMIR/Dialect/Builtin/BuiltinToLLVMIRTranslation.h"
 #include "mlir/Target/LLVMIR/Dialect/LLVMIR/LLVMToLLVMIRTranslation.h"
 #include "mlir/Target/LLVMIR/Export.h"
+#include "llvm/LineEditor/LineEditor.h"
 #include "llvm/Support/TargetSelect.h"
 #include "llvm/Support/raw_ostream.h"
 
@@ -73,21 +74,19 @@ int main(int argc, char **argv) {
   std::cout << "Welcome to jit-calc! ===================================="
             << std::endl;
   // Process unput until user sends ctrl+d end-of-transmission character
-  while (!std::cin.eof()) {
+  llvm::LineEditor LineEditor("");
+  while (auto line = LineEditor.readLine()) {
+    if (!line) {
+      continue;
+    }
     // maximum-hack-overdrive parse of user input
     int firstOperand;
     int secondOperand;
     std::string op;
-    std::cout << "> ";
-    std::cin >> firstOperand >> op >> secondOperand;
+    std::stringstream(*line) >> firstOperand >> op >> secondOperand;
 
-    // error checking
-    if (std::cin.eof()) {
-      continue;
-    }
     if (op != "+") {
-      std::cout << "only addition supported"
-                << "\n";
+      std::cout << "only addition supported" << std::endl;
       continue;
     }
 
@@ -103,8 +102,6 @@ int main(int argc, char **argv) {
     // And lo there was math
     std::cout << result << std::endl;
   }
-
-  std::cout << std::endl;
 
   return 0;
 }

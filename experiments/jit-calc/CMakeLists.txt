@@ -19,6 +19,7 @@ target_link_libraries(jit-calc PRIVATE
   MLIRParser
   MLIRTargetLLVMIRExport
   MLIRSupport
+  LLVMLineEditor
   )
 
 mlir_check_all_link_libraries(jit-calc)
