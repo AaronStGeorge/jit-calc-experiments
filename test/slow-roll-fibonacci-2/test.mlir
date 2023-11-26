@@ -1,10 +1,9 @@
 // RUN: mlir-opt %s \
 // RUN: 	-convert-scf-to-cf \
-// RUN:		-mem2reg \
 // RUN: 	-convert-cf-to-llvm \
 // RUN: 	-convert-vector-to-llvm \
-// RUN: 	-convert-arith-to-llvm \
 // RUN: 	-finalize-memref-to-llvm \
+// RUN: 	-convert-arith-to-llvm \
 // RUN: 	-convert-func-to-llvm \
 // RUN: 	-reconcile-unrealized-casts
 // 		| mlir-cpu-runner \
@@ -22,20 +21,18 @@
 //   j = tmp;
 // }
 // return i;
-func.func @entry() {
+func.func @fib(%n : index) -> i32 attributes { llvm.emit_c_interface } {
 	%c0_index	 = arith.constant 0 : index
 	%c1_index	 = arith.constant 1 : index
 
 	%c0_i32	 = arith.constant 0 : i32
 	%c1_i32	 = arith.constant 1 : i32
 
-	%n = arith.constant 11 : index
-
 	%i = memref.alloca() : memref<i32>
-  memref.store %c0_i32, %i[] : memref<i32>
+	memref.store %c0_i32, %i[] : memref<i32>
 
 	%j = memref.alloca() : memref<i32>
-  memref.store %c1_i32, %j[] : memref<i32>
+	memref.store %c1_i32, %j[] : memref<i32>
 
 	scf.for %c = %c0_index to %n step %c1_index {
 		%i_load = memref.load %i[] : memref<i32>
@@ -46,6 +43,5 @@ func.func @entry() {
 	}
 
 	%0 = memref.load %i[] : memref<i32>
-  vector.print %0 : i32
-  return
+	return %0 : i32
 }

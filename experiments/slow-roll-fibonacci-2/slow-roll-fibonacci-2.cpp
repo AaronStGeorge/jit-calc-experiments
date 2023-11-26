@@ -18,7 +18,14 @@
 #include "mlir/Pass/PassManager.h"
 #include "mlir/Target/LLVMIR/Dialect/Builtin/BuiltinToLLVMIRTranslation.h"
 #include "mlir/Target/LLVMIR/Dialect/LLVMIR/LLVMToLLVMIRTranslation.h"
+#include "mlir/Target/LLVMIR/Export.h"
+
+#include "llvm/ExecutionEngine/Orc/Core.h"
+#include "llvm/ExecutionEngine/Orc/LLJIT.h"
+#include "llvm/ExecutionEngine/Orc/Shared/ExecutorAddress.h"
+#include "llvm/ExecutionEngine/Orc/ThreadSafeModule.h"
 #include "llvm/LineEditor/LineEditor.h"
+#include "llvm/Support/Error.h"
 #include "llvm/Support/TargetSelect.h"
 
 #include <cstdint>
@@ -42,24 +49,19 @@
 //      everything
 // -[ ] count number of instructions swap out when number is over
 
-void myFuction() { std::cout << "called" << std::endl; }
+void myFunction() { std::cout << "called" << std::endl; }
 
-int main(int argc, char **argv) {
-  // LLVM init
-  llvm::InitializeNativeTarget();
-  llvm::InitializeNativeTargetAsmPrinter();
-  llvm::InitializeNativeTargetAsmParser();
-
+llvm::orc::ThreadSafeModule compileFibExample() {
   // Register MLIR dialects
   mlir::DialectRegistry registry;
   mlir::registerAllDialects(registry);
   mlir::registerBuiltinDialectTranslation(registry);
   mlir::registerLLVMDialectTranslation(registry);
 
-  mlir::MLIRContext context(registry);
+  mlir::MLIRContext mlirContext(registry);
 
   // Create lowering pipeline
-  mlir::PassManager pm(&context);
+  mlir::PassManager pm(&mlirContext);
   pm.addPass(mlir::createConvertSCFToCFPass());
   pm.addPass(mlir::createConvertControlFlowToLLVMPass());
   pm.addPass(mlir::createConvertVectorToLLVMPass());
@@ -98,34 +100,56 @@ int main(int argc, char **argv) {
   }
   )mlir";
   mlir::OwningOpRef<mlir::ModuleOp> module =
-      mlir::parseSourceString<mlir::ModuleOp>(moduleStr, &context);
+      mlir::parseSourceString<mlir::ModuleOp>(moduleStr, &mlirContext);
   if (!module) {
     llvm::errs() << "module couldn't be created\n";
-    return 1;
+    exit(1);
   }
 
-  // run lowering pipeline
+  // Run lowering pipeline. Pipeline transforms MLIR dialects -> MLIR dialect
+  // for LLVM. The MLIR dialect for LLVM maps LLVM operations 1:1 with LLVM
+  // operations.
   if (failed(pm.run(*module))) {
     llvm::errs() << "lowering pipeline failed\n";
-    return 1;
+    exit(1);
   }
 
-  // create jit
-  auto jitOrError = mlir::ExecutionEngine::create(*module);
-  if (!jitOrError) {
-    llvm::errs() << "execution engine couldn't be created\n";
-    return 1;
-  }
-  std::unique_ptr<mlir::ExecutionEngine> jit = std::move(jitOrError.get());
+  // translate MLIR llvm dialect into llvm
+  auto llvmContext = std::make_unique<llvm::LLVMContext>();
+  auto llvmModule = translateModuleToLLVMIR(*module, *llvmContext);
 
-  // Make symbol for "myFunction" available in jit
-  jit->registerSymbols([&](llvm::orc::MangleAndInterner interner) {
-    llvm::orc::SymbolMap symbolMap;
-    symbolMap[interner("myFunction")] = {
-        llvm::orc::ExecutorAddr::fromPtr(myFuction),
-        llvm::JITSymbolFlags::Exported};
-    return symbolMap;
-  });
+  // wrap LLVM IR in thing from ORC. I have no idea what this does.
+  return llvm::orc::ThreadSafeModule(std::move(llvmModule),
+                                     std::move(llvmContext));
+}
+
+int main(int argc, char **argv) {
+  // LLVM init
+  llvm::InitializeNativeTarget();
+  llvm::InitializeNativeTargetAsmPrinter();
+  llvm::InitializeNativeTargetAsmParser();
+
+  // create LLJIT a pre-built jit compiler for LLVM IR
+  auto jit = llvm::cantFail(llvm::orc::LLJITBuilder().create());
+
+  // load symbols into jit that we would like to call from jit-ed code
+  llvm::cantFail(jit->getMainJITDylib().define(llvm::orc::absoluteSymbols({
+      {
+          jit->mangleAndIntern("myFunction"),
+          {
+              llvm::orc::ExecutorAddr::fromPtr(myFunction),
+              llvm::JITSymbolFlags::Exported,
+          },
+      },
+  })));
+
+  // load fib example into jit. This should result in a page with execute
+  // permissions containing the assembly compiled from the LLVM IR we produced
+  cantFail(jit->addIRModule(compileFibExample()));
+
+  // grab address of fib function
+  auto fibAddress = llvm::cantFail(jit->lookup("fib"));
+  int (*fib)(uint64_t) = fibAddress.toPtr<int(uint64_t)>();
 
   // Process unput until user sends ctrl+d end-of-transmission character
   llvm::LineEditor LineEditor("");
@@ -134,17 +158,8 @@ int main(int argc, char **argv) {
     uint64_t n;
     std::stringstream(*line) >> n;
 
-    // run our jit-ed function
-    int result = 0;
-    llvm::Error error =
-        jit->invoke("fib", n, mlir::ExecutionEngine::Result<int>(result));
-    if (error) {
-      llvm::errs() << "calling jit-ed function returned error\n";
-      return 1;
-    }
-
     // And lo there was math
-    std::cout << result << std::endl;
+    std::cout << fib(n) << std::endl;
   }
   return 0;
 }

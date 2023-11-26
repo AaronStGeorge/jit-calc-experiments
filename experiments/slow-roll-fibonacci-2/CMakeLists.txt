@@ -1,5 +1,6 @@
 set(LLVM_LINK_COMPONENTS
   Core
+  OrcJIT
   Support
   nativecodegen
   native
@@ -24,3 +25,8 @@ target_link_libraries(slow-roll-fibonacci-2 PRIVATE
   )
 
 mlir_check_all_link_libraries(slow-roll-fibonacci-2)
+
+
+# Don't ask me what the fuck this witchcraft
+# https://github.com/llvm/llvm-project/issues/61712
+export_executable_symbols(slow-roll-fibonacci-2)
