@@ -32,6 +32,8 @@
 
 // steps
 // -[x] get an MLIR fibonacci to run through LLVM
+// -[ ] swap in and out of fibonacci at least once using library developed in
+//      count-to-n maybe just swapping out every instruction
 // -[ ] take a look at the intermediate results get some idea to design the VM
 //      - "the VM" here is basically a (or maybe a set of) MLIR dialects where
 //        each MLIR operation is considered an operation on the computers game
@@ -39,8 +41,6 @@
 //        equates to 400 operations if each operation is equally costly.
 //      - this could be existing MLIR dialects or a new one that maps fairly
 //        straight-forwardly to LLVM
-// -[ ] swap in and out of fibonacci at least once using library developed in
-//      count-to-n maybe just swapping out every instruction
 // -[ ] create an initial version of the "VM"
 //      - maybe create a standalone tool for parsing VM IR with pyparsing or
 //      something?

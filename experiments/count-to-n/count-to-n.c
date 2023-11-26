@@ -6,17 +6,6 @@
 
 #include "HomeRolledCoroutines/HomeRolledCoroutines.h"
 
-struct context {
-  uint64_t rsp;
-  uint64_t r15;
-  uint64_t r14;
-  uint64_t r13;
-  uint64_t r12;
-  uint64_t rbx;
-  uint64_t rbp;
-};
-
-
 void thread_fn(struct context *main_ctx, struct context *thread_ctx,
                int *arg_ptr, int *return_ptr) {
   int n = *arg_ptr;
