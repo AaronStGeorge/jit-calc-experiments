@@ -28,11 +28,13 @@
 #include "llvm/Support/Error.h"
 #include "llvm/Support/TargetSelect.h"
 
+#include "HomeRolledCoroutines/HomeRolledCoroutines.h"
+
 #include <cstdint>
 
 // steps
 // -[x] get an MLIR fibonacci to run through LLVM
-// -[ ] swap in and out of fibonacci at least once using library developed in
+// -[x] swap in and out of fibonacci at least once using library developed in
 //      count-to-n maybe just swapping out every instruction
 // -[ ] take a look at the intermediate results get some idea to design the VM
 //      - "the VM" here is basically a (or maybe a set of) MLIR dialects where
@@ -48,8 +50,6 @@
 // -[ ] write an MLIR pass to insert the swap calls behind the hood after
 //      everything
 // -[ ] count number of instructions swap out when number is over
-
-void myFunction() { std::cout << "called" << std::endl; }
 
 llvm::orc::ThreadSafeModule compileFibExample() {
   // Register MLIR dialects
@@ -72,14 +72,16 @@ llvm::orc::ThreadSafeModule compileFibExample() {
 
   // Parse static mlir function
   std::string moduleStr = R"mlir(
-  func.func private @myFunction() -> ()
-  func.func @fib(%n : index) -> i32 attributes { llvm.emit_c_interface } {
-    func.call @myFunction() : () -> ()
-    %c0_index	 = arith.constant 0 : index
-    %c1_index	 = arith.constant 1 : index
+  func.func private @swap(%from : !llvm.ptr, %to : !llvm.ptr) -> ()
+  func.func private @stop(%from : !llvm.ptr, %to : !llvm.ptr) -> ()
+  func.func @fib(%main_ctx : !llvm.ptr, %thread_ctx : !llvm.ptr) -> () {
+    %n = arith.constant 12 : index
 
-    %c0_i32	 = arith.constant 0 : i32
-    %c1_i32	 = arith.constant 1 : i32
+    %c0_index	= arith.constant 0 : index
+    %c1_index	= arith.constant 1 : index
+
+    %c0_i32	= arith.constant 0 : i32
+    %c1_i32	= arith.constant 1 : i32
 
     %i = memref.alloca() : memref<i32>
     memref.store %c0_i32, %i[] : memref<i32>
@@ -93,10 +95,16 @@ llvm::orc::ThreadSafeModule compileFibExample() {
       %tmp = arith.addi %i_load, %j_load : i32
       memref.store %j_load, %i[] : memref<i32>
       memref.store %tmp, %j[] : memref<i32>
+
+      func.call @swap(%thread_ctx, %main_ctx) : (!llvm.ptr, !llvm.ptr) -> ()
     }
 
     %0 = memref.load %i[] : memref<i32>
-    return %0 : i32
+    // The stack doesn't contain a value for return address for this function.
+    // So we must exit via swapping out otherwise we'll pop some random number
+    // from above the allocated stack and try to jump to it.
+    func.call @stop(%thread_ctx, %main_ctx) : (!llvm.ptr, !llvm.ptr) -> ()
+    return
   }
   )mlir";
   mlir::OwningOpRef<mlir::ModuleOp> module =
@@ -132,34 +140,39 @@ int main(int argc, char **argv) {
   // create LLJIT a pre-built jit compiler for LLVM IR
   auto jit = llvm::cantFail(llvm::orc::LLJITBuilder().create());
 
-  // load symbols into jit that we would like to call from jit-ed code
-  llvm::cantFail(jit->getMainJITDylib().define(llvm::orc::absoluteSymbols({
-      {
-          jit->mangleAndIntern("myFunction"),
-          {
-              llvm::orc::ExecutorAddr::fromPtr(myFunction),
-              llvm::JITSymbolFlags::Exported,
-          },
-      },
-  })));
-
   // load fib example into jit. This should result in a page with execute
   // permissions containing the assembly compiled from the LLVM IR we produced
-  cantFail(jit->addIRModule(compileFibExample()));
+  llvm::cantFail(jit->addIRModule(compileFibExample()));
 
   // grab address of fib function
   auto fibAddress = llvm::cantFail(jit->lookup("fib"));
-  int (*fib)(uint64_t) = fibAddress.toPtr<int(uint64_t)>();
+  int (*fib)(void *, void *) = fibAddress.toPtr<int(void *, void *)>();
 
-  // Process unput until user sends ctrl+d end-of-transmission character
-  llvm::LineEditor LineEditor("");
-  while (auto line = LineEditor.readLine()) {
-    // maximum-hack-overdrive parse of user input
-    uint64_t n;
-    std::stringstream(*line) >> n;
+  // contexts for main function and our "thread" that will run fibonacci
+  struct context main_ctx;
+  struct context thread_ctx;
 
-    // And lo there was math
-    std::cout << fib(n) << std::endl;
+  // setup stack
+  size_t stack_size = 4 * 1024;
+  char *stack = (char *)calloc(stack_size, sizeof(char));
+  // set the top of the stack to fib function. When the swap call returns this
+  // value will be popped off and jumped (or returned) to.
+  *(uint64_t *)&stack[stack_size - 8] = (uint64_t)fib;
+
+  // set stack for thread context
+  thread_ctx.rsp = (uint64_t)&stack[stack_size - 8];
+
+  printf("Starting main\n");
+  swap(&main_ctx, &thread_ctx);
+  int i = 0;
+  printf("in main i=%d\n", i);
+
+  bool done = false;
+  while (!done) {
+    i++;
+    done = swap(&main_ctx, &thread_ctx);
+    printf("in main i=%d\n", i);
   }
+
   return 0;
 }
