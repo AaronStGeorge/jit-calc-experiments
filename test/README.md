@@ -1,6 +1,7 @@
 # jit-calc-experiments tests
-Most of the tests here use [`lit`](https://llvm.org/docs/CommandGuide/lit.html), an LLVM tool for gold file testing. 
-`lit`'s 4D chess move is embedding the commands for running whatever tool you’re testing in comments. 
+Most of the tests here use [`lit`](https://llvm.org/docs/CommandGuide/lit.html), an LLVM tool for gold file testing.
+`lit`' embeds the commands for running whatever tool you’re testing in comments.
+Embedding commands in comments sounds gross, but it's actually galaxy-brain-4d-chess level smart.
 Because of the embedding, a user can just run the file through the tool like normal, *or* use the file as a test!
 
 ## running `lit` tests
@@ -10,9 +11,9 @@ Tests are usually run through the build system.
 ```
 cmake --build build --target check-jit-calc-experiments
 ```
-Tests are run this way because `lit` needs to do a lot of environment setup to know where built artefacts are.
-LLVM (and us) get the environment information `lit` needs by integrating config file generation into the build system. 
-[There’s a great article on how this works](https://medium.com/@mshockwave/using-llvm-lit-out-of-tree-5cddada85a78), the below diagram is from that article. 
+Tests are run this way because `lit` needs to do a lot of environment setup to know where built artifacts are.
+LLVM (and us) get the environment information `lit` needs by integrating config file generation into the build system.
+[There’s a great article on how this works](https://medium.com/@mshockwave/using-llvm-lit-out-of-tree-5cddada85a78), the below diagram is from that article.
 `lit` is a python program by the way, that's why all the config files are python.
 ![out](https://github.com/AaronStGeorge/jit-calc-experiments/assets/2278731/bee0c910-d494-4c6a-a239-a2fedd30fc51)
 

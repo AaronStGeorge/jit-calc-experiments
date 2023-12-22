@@ -43,6 +43,12 @@
 //        equates to 400 operations if each operation is equally costly.
 //      - this could be existing MLIR dialects or a new one that maps fairly
 //        straight-forwardly to LLVM
+//      - (after a week + of thinking) I'm dumb! Why wouldn't this just be wasm?
+//        This type of thing is like exactly what it was designed for. I'll take
+//        a look at some existing wasm runtimes, might not even need to roll our
+//        own here. Though TBH rolling our own sounds fun.
+//        - [ ] find ex post facto excuse why rolling our own MLIR based wasm
+//              runtime is a necessary, high ROI, activity.
 // -[ ] create an initial version of the "VM"
 //      - maybe create a standalone tool for parsing VM IR with pyparsing or
 //      something?
