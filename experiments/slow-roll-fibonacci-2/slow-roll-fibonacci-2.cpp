@@ -68,9 +68,9 @@ llvm::orc::ThreadSafeModule compileFibExample() {
 
   // Create lowering pipeline
   mlir::PassManager pm(&mlirContext);
+  pm.addPass(mlir::createConvertVectorToSCFPass());
   pm.addPass(mlir::createConvertSCFToCFPass());
   pm.addPass(mlir::createConvertControlFlowToLLVMPass());
-  pm.addPass(mlir::createConvertVectorToLLVMPass());
   pm.addPass(mlir::createFinalizeMemRefToLLVMConversionPass());
   pm.addNestedPass<mlir::func::FuncOp>(mlir::createArithToLLVMConversionPass());
   pm.addPass(mlir::createConvertFuncToLLVMPass());
