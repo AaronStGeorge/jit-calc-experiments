@@ -15,11 +15,9 @@ Look, "experiments" is in the name, there's going to be some weird shit.
 
 ### LLVM Source build
 
-The `LLVM` docs have great [instructions on how to build
-LLVM](https://llvm.org/docs/CMake.html). `jit-calc-experiments` needs a few
-`LLVM` utilities and projects to be enabled that aren't part of a regular build.
+The `LLVM` docs have great [instructions on how to build LLVM](https://llvm.org/docs/CMake.html).
+Though `jit-calc-experiments` doesn't care _where_ LLVM is built, it requires a few `LLVM` utilities and projects that aren't part of a regular non-souce build (I think).
 An example `LLVM` build with the required flags is shown here.
-`jit-calc-experiments` isn't fussy about _where_ you build LLVM.
 ```sh
 # shallow clone of llvm to save time
 git clone --depth 1 https://github.com/llvm/llvm-project.git
@@ -40,10 +38,9 @@ ninja
 ```
 ### Building `jit-calc-experiments`
 
-Building `jit-calc-experiments` requires flags to set the path to the `LLVM`
-build, and the path to the `lit` tool (built during `LLVM` build). This setup
-assumes that you have built `LLVM` (with MLIR enabled) in `$BUILD_DIR`. To build
-run
+Building `jit-calc-experiments` requires flags to set the path to the `LLVM` build, and the path to the `lit` tool (built during `LLVM` build). 
+This setup assumes that you have built `LLVM` (with MLIR enabled) in `$BUILD_DIR`. 
+To build run
 ```sh
 mkdir build && cd build
 # generate build script
