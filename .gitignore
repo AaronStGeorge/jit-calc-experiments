@@ -18,3 +18,5 @@ build
 
 # python virtual environment
 experiments/slow-roll-fibonacci-2/practice-interpreter/myenv/*
+
+*.pyc
