@@ -20,7 +20,6 @@ class Instruction(AST):
         """
         Name of instruction
         """
-        pass
 
     @classmethod
     @abstractmethod
@@ -209,6 +208,7 @@ class GlobalSection(Section):
         return cls(parse_vector(stream, Global.parse))
 
 
+@dataclass
 class Module(AST):
     """
     https://webassembly.github.io/spec/core/binary/modules.html#binary-module
@@ -217,7 +217,6 @@ class Module(AST):
     sections: List[Section]
 
     @classmethod
-    @abstractmethod
     def parse(cls, stream: Iterator[bytes]):
         header = bytes(islice(stream, 4))
         if header != b"\x00asm":
