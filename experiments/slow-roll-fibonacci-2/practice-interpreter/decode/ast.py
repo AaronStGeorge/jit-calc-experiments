@@ -6,10 +6,3 @@ class AST(ABC):
     """
     Base class for wasm decode AST
     """
-
-    @classmethod
-    @abstractmethod
-    def parse(cls, stream: Iterator[bytes]) -> "AST":
-        """
-        Factory method to hydrate class
-        """

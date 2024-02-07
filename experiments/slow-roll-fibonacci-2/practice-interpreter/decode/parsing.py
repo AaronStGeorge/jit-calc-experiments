@@ -32,14 +32,20 @@ class GlobalType(AST):
 @dataclass
 class Expression(AST):
     """
-    https://webassembly.github.io/spec/core/binary/instructions.html#instructions
+    https://webassembly.github.io/spec/core/binary/instructions.html#expressions
     """
 
-    instrs: List[Instruction]
+    instructions: List[Instruction]
 
     @classmethod
     def parse(cls, stream: Iterator[bytes]):
-        pass
+        instructions: List[Instruction] = []
+        while True:
+            op_code = next(stream)
+            if op_code == 0x0B:
+                break
+            instructions.append(Instruction.parse(op_code, stream))
+        return cls(instructions)
 
 
 @dataclass
@@ -53,9 +59,7 @@ class Global(AST):
 
     @classmethod
     def parse(cls, stream: Iterator[bytes]) -> "Global":
-        globaltype = GlobalType.parse(stream)
-        instr = Instruction.parse(stream)
-        print("boop")
+        return cls(GlobalType.parse(stream), Expression.parse(stream))
 
 
 @dataclass
@@ -193,6 +197,7 @@ class Module(AST):
         three = Section.parse(stream)
         four = Section.parse(stream)
         sec_id = next(stream)
+        print("boop")
 
 
 def parse_module(stream: Iterator[bytes]) -> Module:

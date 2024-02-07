@@ -14,7 +14,7 @@ class {class_name}(Instruction):
     {attributes}
 
     @classmethod
-    def parse(cls, stream: Iterator[bytes]):
+    def parse(cls, op: int, stream: Iterator[bytes]):
         return cls({constructor_args})
 
 """
@@ -47,7 +47,7 @@ def gen(instructions: Mapping[str, List[str]]) -> str:
     generate classes for <instructions>
     """
     args_template = "args: Tuple[{arg_types}]"
-    name_template = "name: str = \"{name}\""
+    name_template = 'name: str = "{name}"'
 
     mapping = []
     classes = ""
