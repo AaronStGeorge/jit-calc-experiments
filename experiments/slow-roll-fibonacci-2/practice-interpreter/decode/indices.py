@@ -1,0 +1,9 @@
+typeidx = int
+funcidx = int
+tableidx = int
+memidx = int
+globalidx = int
+elemidx = int
+dataidx = int
+localidx = int
+lablelidx = int

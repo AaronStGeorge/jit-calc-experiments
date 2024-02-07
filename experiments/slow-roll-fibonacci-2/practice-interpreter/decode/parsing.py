@@ -5,44 +5,7 @@ from typing import Iterator, List, Mapping, Optional, Tuple
 
 from .ast import AST
 from .utils import parse_signed, parse_unsigned, parse_valtype, parse_vector
-
-i32 = int
-
-
-class Instruction(AST):
-    """
-    https://webassembly.github.io/spec/core/binary/instructions.html#instructions
-    """
-
-    @property
-    @abstractmethod
-    def name(self) -> str:
-        """
-        Name of instruction
-        """
-
-    @classmethod
-    @abstractmethod
-    def parse(cls, stream: Iterator[bytes]):
-        op_code_to_class: Mapping[int, Instruction] = {0x41: i32_const}
-        b = next(stream)
-        instr = op_code_to_class[b].parse(stream)
-        return instr
-
-
-@dataclass
-class i32_const(Instruction):
-    """
-    https://webassembly.github.io/spec/core/binary/instructions.html#numeric-instructions
-    """
-
-    args: Tuple[i32]
-    name: str = "i32.const"
-
-    @classmethod
-    def parse(cls, stream: Iterator[bytes]):
-        arg = parse_signed(stream)
-        return cls((arg))
+from .instructions import Instruction
 
 
 @dataclass

@@ -1,4 +1,6 @@
 from ast import AST
+from itertools import islice
+import struct
 from typing import Callable, Iterator, List
 
 
@@ -84,3 +86,19 @@ def parse_valtype(stream: Iterator[bytes]) -> str:
     if b not in encoding_to_type:
         raise ValueError("Unknown type")
     return encoding_to_type[b]
+
+
+def parse_float32(stream: Iterator[bytes]):
+    """
+    "<" indicates little endian byte order
+    "f" indicates 32-bit IEEE 754 floating point (AKA a C float)
+    """
+    return struct.unpack("<f", bytes(islice(stream, 4)))[0]
+
+
+def parse_float64(stream):
+    """
+    "<" indicates little endian byte order
+    "l" indicates 64-bit IEEE 754 floating point (AKA a C double)
+    """
+    return struct.unpack("<d", bytes(islice(stream, 8)))[0]
