@@ -8,6 +8,67 @@ from typing import Iterator, Mapping, Tuple
 from .instructions import Instruction
 from .utils import parse_float32, parse_float64, parse_signed, parse_unsigned
 from .wasm_types import i32, i64, f32, f64
+from .indices import (
+    typeidx,
+    funcidx,
+    tableidx,
+    memidx,
+    globalidx,
+    elemidx,
+    dataidx,
+    localidx,
+    lablelidx,
+)
+
+
+@dataclass
+class local_get(Instruction):
+    args: Tuple[localidx]
+    name: str = "local.get"
+
+    @classmethod
+    def parse(cls, stream: Iterator[bytes]):
+        return cls((parse_signed(stream)))
+
+
+@dataclass
+class local_set(Instruction):
+    args: Tuple[localidx]
+    name: str = "local.set"
+
+    @classmethod
+    def parse(cls, stream: Iterator[bytes]):
+        return cls((parse_signed(stream)))
+
+
+@dataclass
+class local_tee(Instruction):
+    args: Tuple[localidx]
+    name: str = "local.tee"
+
+    @classmethod
+    def parse(cls, stream: Iterator[bytes]):
+        return cls((parse_signed(stream)))
+
+
+@dataclass
+class global_get(Instruction):
+    args: Tuple[globalidx]
+    name: str = "global.get"
+
+    @classmethod
+    def parse(cls, stream: Iterator[bytes]):
+        return cls((parse_signed(stream)))
+
+
+@dataclass
+class global_set(Instruction):
+    args: Tuple[globalidx]
+    name: str = "global.set"
+
+    @classmethod
+    def parse(cls, stream: Iterator[bytes]):
+        return cls((parse_signed(stream)))
 
 
 @dataclass
@@ -248,7 +309,282 @@ class i64_ge_u(Instruction):
         return cls()
 
 
+@dataclass
+class f32_eq(Instruction):
+    name: str = "f32.eq"
+
+    @classmethod
+    def parse(cls, stream: Iterator[bytes]):
+        return cls()
+
+
+@dataclass
+class f32_ne(Instruction):
+    name: str = "f32.ne"
+
+    @classmethod
+    def parse(cls, stream: Iterator[bytes]):
+        return cls()
+
+
+@dataclass
+class f32_lt(Instruction):
+    name: str = "f32.lt"
+
+    @classmethod
+    def parse(cls, stream: Iterator[bytes]):
+        return cls()
+
+
+@dataclass
+class f32_gt(Instruction):
+    name: str = "f32.gt"
+
+    @classmethod
+    def parse(cls, stream: Iterator[bytes]):
+        return cls()
+
+
+@dataclass
+class f32_le(Instruction):
+    name: str = "f32.le"
+
+    @classmethod
+    def parse(cls, stream: Iterator[bytes]):
+        return cls()
+
+
+@dataclass
+class f32_ge(Instruction):
+    name: str = "f32.ge"
+
+    @classmethod
+    def parse(cls, stream: Iterator[bytes]):
+        return cls()
+
+
+@dataclass
+class f64_eq(Instruction):
+    name: str = "f64.eq"
+
+    @classmethod
+    def parse(cls, stream: Iterator[bytes]):
+        return cls()
+
+
+@dataclass
+class f64_ne(Instruction):
+    name: str = "f64.ne"
+
+    @classmethod
+    def parse(cls, stream: Iterator[bytes]):
+        return cls()
+
+
+@dataclass
+class f64_lt(Instruction):
+    name: str = "f64.lt"
+
+    @classmethod
+    def parse(cls, stream: Iterator[bytes]):
+        return cls()
+
+
+@dataclass
+class f64_gt(Instruction):
+    name: str = "f64.gt"
+
+    @classmethod
+    def parse(cls, stream: Iterator[bytes]):
+        return cls()
+
+
+@dataclass
+class f64_le(Instruction):
+    name: str = "f64.le"
+
+    @classmethod
+    def parse(cls, stream: Iterator[bytes]):
+        return cls()
+
+
+@dataclass
+class f64_ge(Instruction):
+    name: str = "f64.ge"
+
+    @classmethod
+    def parse(cls, stream: Iterator[bytes]):
+        return cls()
+
+
+@dataclass
+class i32_clz(Instruction):
+    name: str = "i32.clz"
+
+    @classmethod
+    def parse(cls, stream: Iterator[bytes]):
+        return cls()
+
+
+@dataclass
+class i32_ctz(Instruction):
+    name: str = "i32.ctz"
+
+    @classmethod
+    def parse(cls, stream: Iterator[bytes]):
+        return cls()
+
+
+@dataclass
+class i32_popcnt(Instruction):
+    name: str = "i32.popcnt"
+
+    @classmethod
+    def parse(cls, stream: Iterator[bytes]):
+        return cls()
+
+
+@dataclass
+class i32_add(Instruction):
+    name: str = "i32.add"
+
+    @classmethod
+    def parse(cls, stream: Iterator[bytes]):
+        return cls()
+
+
+@dataclass
+class i32_sub(Instruction):
+    name: str = "i32.sub"
+
+    @classmethod
+    def parse(cls, stream: Iterator[bytes]):
+        return cls()
+
+
+@dataclass
+class i32_mul(Instruction):
+    name: str = "i32.mul"
+
+    @classmethod
+    def parse(cls, stream: Iterator[bytes]):
+        return cls()
+
+
+@dataclass
+class i32_div_s(Instruction):
+    name: str = "i32.div_s"
+
+    @classmethod
+    def parse(cls, stream: Iterator[bytes]):
+        return cls()
+
+
+@dataclass
+class i32_div_u(Instruction):
+    name: str = "i32.div_u"
+
+    @classmethod
+    def parse(cls, stream: Iterator[bytes]):
+        return cls()
+
+
+@dataclass
+class i32_rem_s(Instruction):
+    name: str = "i32.rem_s"
+
+    @classmethod
+    def parse(cls, stream: Iterator[bytes]):
+        return cls()
+
+
+@dataclass
+class i32_rem_u(Instruction):
+    name: str = "i32.rem_u"
+
+    @classmethod
+    def parse(cls, stream: Iterator[bytes]):
+        return cls()
+
+
+@dataclass
+class i32_and(Instruction):
+    name: str = "i32.and"
+
+    @classmethod
+    def parse(cls, stream: Iterator[bytes]):
+        return cls()
+
+
+@dataclass
+class i32_or(Instruction):
+    name: str = "i32.or"
+
+    @classmethod
+    def parse(cls, stream: Iterator[bytes]):
+        return cls()
+
+
+@dataclass
+class i32_xor(Instruction):
+    name: str = "i32.xor"
+
+    @classmethod
+    def parse(cls, stream: Iterator[bytes]):
+        return cls()
+
+
+@dataclass
+class i32_shl(Instruction):
+    name: str = "i32.shl"
+
+    @classmethod
+    def parse(cls, stream: Iterator[bytes]):
+        return cls()
+
+
+@dataclass
+class i32_shr_s(Instruction):
+    name: str = "i32.shr_s"
+
+    @classmethod
+    def parse(cls, stream: Iterator[bytes]):
+        return cls()
+
+
+@dataclass
+class i32_shr_u(Instruction):
+    name: str = "i32.shr_u"
+
+    @classmethod
+    def parse(cls, stream: Iterator[bytes]):
+        return cls()
+
+
+@dataclass
+class i32_rtol(Instruction):
+    name: str = "i32.rtol"
+
+    @classmethod
+    def parse(cls, stream: Iterator[bytes]):
+        return cls()
+
+
+@dataclass
+class i32_rtor(Instruction):
+    name: str = "i32.rtor"
+
+    @classmethod
+    def parse(cls, stream: Iterator[bytes]):
+        return cls()
+
+
 id_to_generated_instruction_class: Mapping[int, Instruction] = {
+    0x20: local_get,
+    0x21: local_set,
+    0x22: local_tee,
+    0x23: global_get,
+    0x24: global_set,
     0x41: i32_const,
     0x42: i64_const,
     0x43: f32_const,
@@ -275,4 +611,34 @@ id_to_generated_instruction_class: Mapping[int, Instruction] = {
     0x58: i64_le_u,
     0x59: i64_ge_s,
     0x5A: i64_ge_u,
+    0x5B: f32_eq,
+    0x5C: f32_ne,
+    0x5D: f32_lt,
+    0x5E: f32_gt,
+    0x5F: f32_le,
+    0x60: f32_ge,
+    0x61: f64_eq,
+    0x62: f64_ne,
+    0x63: f64_lt,
+    0x64: f64_gt,
+    0x65: f64_le,
+    0x66: f64_ge,
+    0x67: i32_clz,
+    0x68: i32_ctz,
+    0x69: i32_popcnt,
+    0x6A: i32_add,
+    0x6B: i32_sub,
+    0x6C: i32_mul,
+    0x6D: i32_div_s,
+    0x6E: i32_div_u,
+    0x6F: i32_rem_s,
+    0x70: i32_rem_u,
+    0x71: i32_and,
+    0x72: i32_or,
+    0x73: i32_xor,
+    0x74: i32_shl,
+    0x75: i32_shr_s,
+    0x76: i32_shr_u,
+    0x77: i32_rtol,
+    0x78: i32_rtor,
 }

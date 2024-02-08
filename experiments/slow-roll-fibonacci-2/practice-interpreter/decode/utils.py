@@ -55,13 +55,17 @@ def parse_signed(stream: Iterator[bytes]) -> int:
 
 
 def parse_vector(
-    stream: Iterator[bytes], parsing_function: Callable[[Iterator[bytes]], AST]
+    stream: Iterator[bytes], parsing_function: Callable[[Iterator[bytes]], any]
 ) -> List[AST]:
     """
     https://webassembly.github.io/spec/core/binary/conventions.html#vectors
     """
     num = parse_unsigned(stream)
     return [parsing_function(stream) for _ in range(num)]
+
+
+def parse_string(stream) -> str:
+    return bytes(parse_vector(stream, next)).decode("utf-8")
 
 
 def parse_valtype(stream: Iterator[bytes]) -> str:

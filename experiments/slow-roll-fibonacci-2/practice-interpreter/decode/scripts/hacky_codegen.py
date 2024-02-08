@@ -6,6 +6,8 @@ type_to_parsing_fn = {
     "i64": "parse_signed(stream)",
     "f32": "parse_float32(stream)",
     "f64": "parse_float64(stream)",
+    "localidx": "parse_signed(stream)",
+    "globalidx": "parse_signed(stream)",
 }
 
 INSTRUCTION_CLASS_TEMPLATE = """
@@ -14,7 +16,7 @@ class {class_name}(Instruction):
     {attributes}
 
     @classmethod
-    def parse(cls, op: int, stream: Iterator[bytes]):
+    def parse(cls, stream: Iterator[bytes]):
         return cls({constructor_args})
 
 """
@@ -31,6 +33,17 @@ from typing import Iterator, Mapping, Tuple
 from .instructions import Instruction
 from .utils import parse_float32, parse_float64, parse_signed, parse_unsigned
 from .wasm_types import i32, i64, f32, f64
+from .indices import (
+    typeidx,
+    funcidx,
+    tableidx,
+    memidx,
+    globalidx,
+    elemidx,
+    dataidx,
+    localidx,
+    lablelidx,
+)
 
 """
 
@@ -80,6 +93,12 @@ if __name__ == "__main__":
     with open("../generated_instructions.py", "w") as file:
 
         instructions_to_gen = {
+            0x20: ("local.get", ["localidx"]),
+            0x21: ("local.set", ["localidx"]),
+            0x22: ("local.tee", ["localidx"]),
+            0x23: ("global.get", ["globalidx"]),
+            0x24: ("global.set", ["globalidx"]),
+            #
             0x41: ("i32.const", ["i32"]),
             0x42: ("i64.const", ["i64"]),
             0x43: ("f32.const", ["f32"]),
@@ -109,6 +128,38 @@ if __name__ == "__main__":
             0x59: ("i64.ge_s", []),
             0x5A: ("i64.ge_u", []),
             #
+            0x5B: ("f32.eq", []),
+            0x5C: ("f32.ne", []),
+            0x5D: ("f32.lt", []),
+            0x5E: ("f32.gt", []),
+            0x5F: ("f32.le", []),
+            0x60: ("f32.ge", []),
+            #
+            0x61: ("f64.eq", []),
+            0x62: ("f64.ne", []),
+            0x63: ("f64.lt", []),
+            0x64: ("f64.gt", []),
+            0x65: ("f64.le", []),
+            0x66: ("f64.ge", []),
+            #
+            0x67: ("i32.clz", []),
+            0x68: ("i32.ctz", []),
+            0x69: ("i32.popcnt", []),
+            0x6A: ("i32.add", []),
+            0x6B: ("i32.sub", []),
+            0x6C: ("i32.mul", []),
+            0x6D: ("i32.div_s", []),
+            0x6E: ("i32.div_u", []),
+            0x6F: ("i32.rem_s", []),
+            0x70: ("i32.rem_u", []),
+            0x71: ("i32.and", []),
+            0x72: ("i32.or", []),
+            0x73: ("i32.xor", []),
+            0x74: ("i32.shl", []),
+            0x75: ("i32.shr_s", []),
+            0x76: ("i32.shr_u", []),
+            0x77: ("i32.rtol", []),
+            0x78: ("i32.rtor", []),
         }
 
         file.write(gen(instructions_to_gen))
