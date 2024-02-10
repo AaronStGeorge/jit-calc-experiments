@@ -1,9 +1,13 @@
 from decode import parse_module
 import pprint
+import sys
 
-# So far this is a straight forward clone of https://github.com/dabeaz/wadze
 if __name__ == "__main__":
-    with open("add.wasm", "rb") as file:
+    if len(sys.argv) != 2:
+        print(f"usage: {sys.argv[0]} <file.wasm> ", file=sys.stderr)
+        exit(1)
+
+    with open(sys.argv[1], "rb") as file:
         stream = iter(bytes(file.read()))
         module = parse_module(stream)
 

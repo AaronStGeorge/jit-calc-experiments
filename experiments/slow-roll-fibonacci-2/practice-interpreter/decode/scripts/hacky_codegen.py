@@ -6,8 +6,9 @@ type_to_parsing_fn = {
     "i64": "parse_signed(stream)",
     "f32": "parse_float32(stream)",
     "f64": "parse_float64(stream)",
-    "localidx": "parse_signed(stream)",
-    "globalidx": "parse_signed(stream)",
+    "local_idx": "parse_signed(stream)",
+    "global_idx": "parse_signed(stream)",
+    "label_idx": "parse_signed(stream)",
 }
 
 INSTRUCTION_CLASS_TEMPLATE = """
@@ -34,15 +35,15 @@ from .instructions import Instruction
 from .utils import parse_float32, parse_float64, parse_signed, parse_unsigned
 from .wasm_types import i32, i64, f32, f64
 from .indices import (
-    typeidx,
-    funcidx,
-    tableidx,
-    memidx,
-    globalidx,
-    elemidx,
-    dataidx,
-    localidx,
-    lablelidx,
+    type_idx,
+    func_idx,
+    table_idx,
+    mem_idx,
+    global_idx,
+    elem_idx,
+    data_idx,
+    local_idx,
+    label_idx,
 )
 
 """
@@ -93,11 +94,16 @@ if __name__ == "__main__":
     with open("../generated_instructions.py", "w") as file:
 
         instructions_to_gen = {
-            0x20: ("local.get", ["localidx"]),
-            0x21: ("local.set", ["localidx"]),
-            0x22: ("local.tee", ["localidx"]),
-            0x23: ("global.get", ["globalidx"]),
-            0x24: ("global.set", ["globalidx"]),
+            0x00: ("unreachable", []),
+            0x01: ("nop", []),
+            0x0C: ("br", ["label_idx"]),
+            0x0D: ("br_if", ["label_idx"]),
+            #
+            0x20: ("local.get", ["local_idx"]),
+            0x21: ("local.set", ["local_idx"]),
+            0x22: ("local.tee", ["local_idx"]),
+            0x23: ("global.get", ["global_idx"]),
+            0x24: ("global.set", ["global_idx"]),
             #
             0x41: ("i32.const", ["i32"]),
             0x42: ("i64.const", ["i64"]),

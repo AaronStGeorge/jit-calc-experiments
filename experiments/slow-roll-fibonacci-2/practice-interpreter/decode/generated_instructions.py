@@ -9,21 +9,59 @@ from .instructions import Instruction
 from .utils import parse_float32, parse_float64, parse_signed, parse_unsigned
 from .wasm_types import i32, i64, f32, f64
 from .indices import (
-    typeidx,
-    funcidx,
-    tableidx,
-    memidx,
-    globalidx,
-    elemidx,
-    dataidx,
-    localidx,
-    lablelidx,
+    type_idx,
+    func_idx,
+    table_idx,
+    mem_idx,
+    global_idx,
+    elem_idx,
+    data_idx,
+    local_idx,
+    label_idx,
 )
 
 
 @dataclass
+class unreachable(Instruction):
+    name: str = "unreachable"
+
+    @classmethod
+    def parse(cls, stream: Iterator[bytes]):
+        return cls()
+
+
+@dataclass
+class nop(Instruction):
+    name: str = "nop"
+
+    @classmethod
+    def parse(cls, stream: Iterator[bytes]):
+        return cls()
+
+
+@dataclass
+class br(Instruction):
+    args: Tuple[label_idx]
+    name: str = "br"
+
+    @classmethod
+    def parse(cls, stream: Iterator[bytes]):
+        return cls((parse_signed(stream)))
+
+
+@dataclass
+class br_if(Instruction):
+    args: Tuple[label_idx]
+    name: str = "br_if"
+
+    @classmethod
+    def parse(cls, stream: Iterator[bytes]):
+        return cls((parse_signed(stream)))
+
+
+@dataclass
 class local_get(Instruction):
-    args: Tuple[localidx]
+    args: Tuple[local_idx]
     name: str = "local.get"
 
     @classmethod
@@ -33,7 +71,7 @@ class local_get(Instruction):
 
 @dataclass
 class local_set(Instruction):
-    args: Tuple[localidx]
+    args: Tuple[local_idx]
     name: str = "local.set"
 
     @classmethod
@@ -43,7 +81,7 @@ class local_set(Instruction):
 
 @dataclass
 class local_tee(Instruction):
-    args: Tuple[localidx]
+    args: Tuple[local_idx]
     name: str = "local.tee"
 
     @classmethod
@@ -53,7 +91,7 @@ class local_tee(Instruction):
 
 @dataclass
 class global_get(Instruction):
-    args: Tuple[globalidx]
+    args: Tuple[global_idx]
     name: str = "global.get"
 
     @classmethod
@@ -63,7 +101,7 @@ class global_get(Instruction):
 
 @dataclass
 class global_set(Instruction):
-    args: Tuple[globalidx]
+    args: Tuple[global_idx]
     name: str = "global.set"
 
     @classmethod
@@ -580,6 +618,10 @@ class i32_rtor(Instruction):
 
 
 id_to_generated_instruction_class: Mapping[int, Instruction] = {
+    0x0: unreachable,
+    0x1: nop,
+    0xC: br,
+    0xD: br_if,
     0x20: local_get,
     0x21: local_set,
     0x22: local_tee,

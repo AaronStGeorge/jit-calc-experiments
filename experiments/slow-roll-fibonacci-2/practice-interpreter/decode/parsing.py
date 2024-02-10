@@ -11,17 +11,17 @@ from .utils import (
     parse_valtype,
     parse_vector,
 )
-from .instructions import Instruction
+from .instructions import Instruction, parse_instruction_list
 from .indices import (
-    typeidx,
-    funcidx,
-    tableidx,
-    memidx,
-    globalidx,
-    elemidx,
-    dataidx,
-    localidx,
-    lablelidx,
+    type_idx,
+    func_idx,
+    table_idx,
+    mem_idx,
+    global_idx,
+    elem_idx,
+    data_idx,
+    local_idx,
+    label_idx,
 )
 
 
@@ -56,13 +56,7 @@ class Expression(AST):
 
     @classmethod
     def parse(cls, stream: Iterator[bytes]):
-        instructions: List[Instruction] = []
-        while True:
-            op_code = next(stream)
-            if op_code == 0x0B:
-                break
-            instructions.append(Instruction.parse(op_code, stream))
-        return cls(instructions)
+        return cls(parse_instruction_list(stream))
 
 
 @dataclass
@@ -169,7 +163,7 @@ class FunctionSection(Section):
     https://webassembly.github.io/spec/core/binary/modules.html#function-section
     """
 
-    function_indices: List[typeidx] = field(default_factory=list)
+    function_indices: List[type_idx] = field(default_factory=list)
 
     @classmethod
     def parse(cls, stream: Iterator[bytes]) -> "FunctionSection":
@@ -211,7 +205,7 @@ class Export(Section):
 @dataclass
 class ExportFunction(Export):
     name: str
-    ref: funcidx
+    ref: func_idx
 
     @classmethod
     def parse(cls, name: str, stream: Iterator[bytes]) -> "ExportFunction":
@@ -221,7 +215,7 @@ class ExportFunction(Export):
 @dataclass
 class ExportTable(Export):
     name: str
-    ref: tableidx
+    ref: table_idx
 
     @classmethod
     def parse(cls, name: str, stream: Iterator[bytes]) -> "ExportTable":
@@ -231,7 +225,7 @@ class ExportTable(Export):
 @dataclass
 class ExportMemory(Export):
     name: str
-    ref: memidx
+    ref: mem_idx
 
     @classmethod
     def parse(cls, name: str, stream: Iterator[bytes]) -> "ExportMemory":
@@ -241,7 +235,7 @@ class ExportMemory(Export):
 @dataclass
 class ExportGlobal(Export):
     name: str
-    ref: globalidx
+    ref: global_idx
 
     @classmethod
     def parse(cls, name: str, stream: Iterator[bytes]) -> "ExportGlobal":

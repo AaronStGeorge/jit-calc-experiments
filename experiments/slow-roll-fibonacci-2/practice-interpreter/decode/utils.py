@@ -78,6 +78,7 @@ def parse_valtype(stream: Iterator[bytes]) -> str:
       https://webassembly.github.io/spec/core/binary/types.html#reference-types
     """
     encoding_to_type = {
+        0x40: None,
         0x7F: "i32",
         0x7E: "i64",
         0x7D: "f32",
