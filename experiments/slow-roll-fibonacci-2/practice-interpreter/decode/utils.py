@@ -9,7 +9,10 @@ def parse_unsigned(stream: Iterator[bytes]) -> int:
     All integers are encoded using Little Endian Base 128 (LEB128) variable
     length encoding.
 
-    The basic idea of the encoding is:
+    The basic idea of the encoding is: you grab a byte at a time, that byte
+    contains 7 bits of the the encoded number, and one bit that tells you if the
+    next byte should be consumed or not.
+
     0b_XXXX_XXXX
        ^^      ^
        ||      |
