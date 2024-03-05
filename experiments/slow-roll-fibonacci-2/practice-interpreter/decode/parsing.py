@@ -1,9 +1,8 @@
 from abc import abstractmethod
 from dataclasses import dataclass, field
 from itertools import islice
-from typing import Iterator, List, Mapping, Optional, Tuple
+from typing import Iterator, Callable, List, Mapping, Optional, Tuple
 
-from .ast import AST
 from .utils import (
     parse_signed,
     parse_string,
@@ -26,7 +25,7 @@ from .indices import (
 
 
 @dataclass
-class GlobalType(AST):
+class GlobalType:
     """
     https://webassembly.github.io/spec/core/binary/types.html#global-types
     """
@@ -47,7 +46,7 @@ class GlobalType(AST):
 
 
 @dataclass
-class Expression(AST):
+class Expression:
     """
     https://webassembly.github.io/spec/core/binary/instructions.html#expressions
     """
@@ -60,7 +59,7 @@ class Expression(AST):
 
 
 @dataclass
-class Global(AST):
+class Global:
     """
     https://webassembly.github.io/spec/core/binary/modules.html#global-section
     """
@@ -74,7 +73,7 @@ class Global(AST):
 
 
 @dataclass
-class MemoryType(AST):
+class MemType:
     """
     https://webassembly.github.io/spec/core/binary/types.html#memory-types
     """
@@ -83,16 +82,16 @@ class MemoryType(AST):
     max: Optional[int]
 
     @classmethod
-    def parse(cls, stream: Iterator[bytes]) -> "MemoryType":
+    def parse(cls, stream: Iterator[bytes]) -> "MemType":
         b = next(stream)
         if b == 0x00:
-            return MemoryType(min=parse_unsigned(stream), max=None)
+            return MemType(min=parse_unsigned(stream), max=None)
         elif b == 0x01:
-            return MemoryType(min=parse_unsigned(stream), max=parse_unsigned(stream))
+            return MemType(min=parse_unsigned(stream), max=parse_unsigned(stream))
 
 
 @dataclass
-class FunctionType(AST):
+class FuncType:
     """
     https://webassembly.github.io/spec/core/binary/types.html#function-types
     """
@@ -101,7 +100,7 @@ class FunctionType(AST):
     result_types: List[str]
 
     @classmethod
-    def parse(cls, stream: Iterator[bytes]) -> "FunctionType":
+    def parse(cls, stream: Iterator[bytes]) -> "FuncType":
         magic = bytes(islice(stream, 1))
         if magic != b"\x60":
             raise ValueError("Expected the byte 0x60 in functype")
@@ -110,81 +109,8 @@ class FunctionType(AST):
         return cls(param_types, result_types)
 
 
-class Section(AST):
-    """
-    https://webassembly.github.io/spec/core/binary/modules.html#sections
-    """
-
-    @classmethod
-    @abstractmethod
-    def parse(cls, sec_id: int, stream: Iterator[bytes]):
-        section_id_to_section: Mapping[int, Section] = {
-            1: TypeSection,
-            3: FunctionSection,
-            5: MemorySection,
-            6: GlobalSection,
-            7: ExportSection,
-            10: CodeSection,
-        }
-        if sec_id not in section_id_to_section:
-            raise ValueError("Unknown Section ID")
-        return section_id_to_section[sec_id].parse(stream)
-
-
 @dataclass
-class TypeSection(Section):
-    """
-    https://webassembly.github.io/spec/core/binary/modules.html#type-section
-    """
-
-    function_types: List[FunctionType] = field(default_factory=list)
-
-    @classmethod
-    def parse(cls, stream: Iterator[bytes]):
-        return cls(parse_vector(stream, FunctionType.parse))
-
-
-@dataclass
-class MemorySection(Section):
-    """
-    https://webassembly.github.io/spec/core/binary/modules.html#memory-section
-    """
-
-    memories: List[MemoryType] = field(default_factory=[])
-
-    @classmethod
-    def parse(cls, stream: Iterator[bytes]) -> "MemorySection":
-        return cls(parse_vector(stream, MemoryType.parse))
-
-
-@dataclass
-class FunctionSection(Section):
-    """
-    https://webassembly.github.io/spec/core/binary/modules.html#function-section
-    """
-
-    function_indices: List[type_idx] = field(default_factory=list)
-
-    @classmethod
-    def parse(cls, stream: Iterator[bytes]) -> "FunctionSection":
-        return cls(parse_vector(stream, parse_unsigned))
-
-
-@dataclass
-class GlobalSection(Section):
-    """
-    https://webassembly.github.io/spec/core/binary/modules.html#global-section
-    """
-
-    globals: List[Global] = field(default_factory=list)
-
-    @classmethod
-    def parse(cls, stream: Iterator[bytes]) -> "GlobalSection":
-        return cls(parse_vector(stream, Global.parse))
-
-
-@dataclass
-class Export(Section):
+class Export:
     """
     https://webassembly.github.io/spec/core/binary/modules.html#binary-export
     """
@@ -243,20 +169,7 @@ class ExportGlobal(Export):
 
 
 @dataclass
-class ExportSection(Section):
-    """
-    https://webassembly.github.io/spec/core/binary/modules.html#export-section
-    """
-
-    exports: List[Export] = field(default_factory=list)
-
-    @classmethod
-    def parse(cls, stream: Iterator[bytes]) -> "ExportSection":
-        return cls(parse_vector(stream, Export.parse))
-
-
-@dataclass
-class Local(AST):
+class Local:
     """
     https://webassembly.github.io/spec/core/binary/modules.html#binary-code
     """
@@ -270,7 +183,7 @@ class Local(AST):
 
 
 @dataclass
-class Code(AST):
+class Code:
     """
     https://webassembly.github.io/spec/core/binary/modules.html#binary-code
     """
@@ -285,30 +198,23 @@ class Code(AST):
 
 
 @dataclass
-class CodeSection(Section):
-    """
-    https://webassembly.github.io/spec/core/binary/modules.html#code-section
-    """
-
-    code: List[Code] = field(default_factory=list)
-
-    @classmethod
-    def parse(cls, stream: Iterator[bytes]) -> "ExportSection":
-        return cls(parse_vector(stream, Code.parse))
-
-
-@dataclass
-class Module(AST):
+class Module:
     """
     https://webassembly.github.io/spec/core/binary/modules.html#binary-module
     """
 
-    type_section: TypeSection = field(default_factory=TypeSection)
-    function_section: FunctionSection = field(default_factory=FunctionSection)
-    memory_section: MemorySection = field(default_factory=MemorySection)
-    global_section: GlobalSection = field(default_factory=GlobalSection)
-    export_section: ExportSection = field(default_factory=ExportSection)
-    code_section: CodeSection = field(default_factory=CodeSection)
+    # https://webassembly.github.io/spec/core/binary/modules.html#type-section
+    typesec: List[FuncType] = field(default_factory=list)
+    # https://webassembly.github.io/spec/core/binary/modules.html#function-section
+    funcsec: List[type_idx] = field(default_factory=list)
+    # https://webassembly.github.io/spec/core/binary/modules.html#memory-section
+    memsec: List[MemType] = field(default_factory=list)
+    # https://webassembly.github.io/spec/core/binary/modules.html#global-section
+    globalsec: List[Global] = field(default_factory=list)
+    # https://webassembly.github.io/spec/core/binary/modules.html#export-section
+    exportsec: List[Export] = field(default_factory=list)
+    # https://webassembly.github.io/spec/core/binary/modules.html#code-section
+    codesec: List[Code] = field(default_factory=list)
 
     @classmethod
     def parse(cls, stream: Iterator[bytes]):
@@ -319,13 +225,15 @@ class Module(AST):
         if version != b"\x01\x00\x00\x00":
             raise ValueError("Expected version 1")
 
-        section_id_to_name: Mapping[int, str] = {
-            1: "type_section",
-            3: "function_section",
-            5: "memory_section",
-            6: "global_section",
-            7: "export_section",
-            10: "code_section",
+        sec_id_to_name_and_parsing_func: Mapping[
+            int, Tuple[str, Callable[[Iterator[bytes]], any]]
+        ] = {
+            1: ("typesec", FuncType.parse),
+            3: ("funcsec", parse_unsigned),
+            5: ("memsec", MemType.parse),
+            6: ("globalsec", Global.parse),
+            7: ("exportsec", Export.parse),
+            10: ("codesec", Code.parse),
         }
 
         sections = {}
@@ -338,7 +246,9 @@ class Module(AST):
                     stream = islice(stream, size, None)
                     continue
 
-                sections[section_id_to_name[sec_id]] = Section.parse(sec_id, stream)
+                sec_name, parse_func = sec_id_to_name_and_parsing_func[sec_id]
+
+                sections[sec_name] = parse_vector(stream, parse_func)
             except StopIteration:
                 break
         return cls(**sections)
