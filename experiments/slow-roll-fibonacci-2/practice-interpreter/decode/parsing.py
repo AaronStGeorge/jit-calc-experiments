@@ -1,4 +1,3 @@
-from abc import abstractmethod
 from dataclasses import dataclass, field
 from itertools import islice
 from typing import Iterator, Callable, List, Mapping, Optional, Tuple
@@ -204,17 +203,17 @@ class Module:
     """
 
     # https://webassembly.github.io/spec/core/binary/modules.html#type-section
-    typesec: List[FuncType] = field(default_factory=list)
+    type_sec: List[FuncType] = field(default_factory=list)
     # https://webassembly.github.io/spec/core/binary/modules.html#function-section
-    funcsec: List[type_idx] = field(default_factory=list)
+    func_sec: List[type_idx] = field(default_factory=list)
     # https://webassembly.github.io/spec/core/binary/modules.html#memory-section
-    memsec: List[MemType] = field(default_factory=list)
+    mem_sec: List[MemType] = field(default_factory=list)
     # https://webassembly.github.io/spec/core/binary/modules.html#global-section
-    globalsec: List[Global] = field(default_factory=list)
+    global_sec: List[Global] = field(default_factory=list)
     # https://webassembly.github.io/spec/core/binary/modules.html#export-section
-    exportsec: List[Export] = field(default_factory=list)
+    export_sec: List[Export] = field(default_factory=list)
     # https://webassembly.github.io/spec/core/binary/modules.html#code-section
-    codesec: List[Code] = field(default_factory=list)
+    code_sec: List[Code] = field(default_factory=list)
 
     @classmethod
     def parse(cls, stream: Iterator[bytes]):
@@ -228,12 +227,12 @@ class Module:
         sec_id_to_name_and_parsing_func: Mapping[
             int, Tuple[str, Callable[[Iterator[bytes]], any]]
         ] = {
-            1: ("typesec", FuncType.parse),
-            3: ("funcsec", parse_unsigned),
-            5: ("memsec", MemType.parse),
-            6: ("globalsec", Global.parse),
-            7: ("exportsec", Export.parse),
-            10: ("codesec", Code.parse),
+            1: ("type_sec", FuncType.parse),
+            3: ("func_sec", parse_unsigned),
+            5: ("mem_sec", MemType.parse),
+            6: ("global_sec", Global.parse),
+            7: ("export_sec", Export.parse),
+            10: ("code_sec", Code.parse),
         }
 
         sections = {}

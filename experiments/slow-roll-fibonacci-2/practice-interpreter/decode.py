@@ -1,13 +1,17 @@
-from decode import parse_module
+import argparse
 import pprint
-import sys
+
+from decode import parse_module
+
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        print(f"usage: {sys.argv[0]} <file.wasm> ", file=sys.stderr)
-        exit(1)
 
-    with open(sys.argv[1], "rb") as file:
+    parser = argparse.ArgumentParser(description="Dump decoded wasm file")
+    parser.add_argument("file", type=str, help="Wasm file to load")
+
+    args = parser.parse_args()
+
+    with open(args.file, "rb") as file:
         stream = iter(bytes(file.read()))
         module = parse_module(stream)
 
