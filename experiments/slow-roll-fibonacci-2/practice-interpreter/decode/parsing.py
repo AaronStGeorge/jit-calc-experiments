@@ -188,7 +188,7 @@ class Code:
     """
 
     locals: List
-    instructions: Expression
+    expr: Expression
 
     @classmethod
     def parse(cls, stream: Iterator[bytes]) -> "ExportSection":
