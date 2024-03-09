@@ -1,7 +1,18 @@
 import argparse
-from typing import List, Tuple
-
+from dataclasses import dataclass
+from typing import List, Tuple, Union, Dict
 import decode
+
+WasmType = Union[
+    decode.i32,
+    decode.u32,
+    decode.s32,
+    decode.i64,
+    decode.u64,
+    decode.s64,
+    decode.f32,
+    decode.f64,
+]
 
 
 class Function:
@@ -11,20 +22,61 @@ class Function:
         self.code = code
 
 
-class Machine:
+class Machine(decode.Visitor):
     def __init__(self, functions: List[Function]):
         self.functions = functions
         # 1 gb stack
         self.memory = bytearray(1024 * 1024 * 1024)
 
-    def call(self, func_idx: decode.func_idx, *args: Tuple[any, ...]):
+    def call(self, func_idx: decode.func_idx, *args: Tuple[WasmType, ...]):
         func = self.functions[func_idx]
         if len(args) != func.nparams:
             s = ("s" if func.nparams > 1 else "",)
             raise ValueError(
                 f"func with index {func_idx} expected {func.nparams} arg{s}"
             )
-        print(func.code)
+        locals = dict(enumerate(args))
+        self.execute(func.code, locals)
+
+    def execute(self, code: decode.Code, locals: Dict[int, WasmType]):
+        for instruction in code.expr.instructions:
+            instruction.accept(self)
+
+    def visit_block(self, instruction: decode.block) -> None:
+        pass
+
+    def visit_loop(self, instruction: decode.loop) -> None:
+        pass
+
+    def visit_unreachable(self, instruction: decode.unreachable) -> None:
+        pass
+
+    def visit_nop(self, instruction: decode.nop) -> None:
+        pass
+
+    def visit_br(self, instruction: decode.br) -> None:
+        pass
+
+    def visit_br_if(self, instruction: decode.br_if) -> None:
+        pass
+
+    def visit_local_get(self, instruction: decode.local_get) -> None:
+        print(instruction.name)
+
+    def visit_local_set(self, instruction: decode.local_set) -> None:
+        pass
+
+    def visit_local_tee(self, instruction: decode.local_tee) -> None:
+        pass
+
+    def visit_i32_const(self, instruction: decode.i32_const) -> None:
+        pass
+
+    def visit_i32_ge_s(self, instruction: decode.i32_ge_s) -> None:
+        pass
+
+    def visit_i32_add(self, instruction: decode.i32_add) -> None:
+        print(instruction.name)
 
 
 if __name__ == "__main__":
