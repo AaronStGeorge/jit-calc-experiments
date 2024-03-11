@@ -27,6 +27,10 @@ class Executor(decode.Visitor):
     locals: Dict[int, WasmType]
     items: List[WasmType] = field(default_factory=list)
 
+    def execute(self, instructions: List[decode.Instruction]):
+        for instruction in instructions:
+            instruction.accept(self)
+
     def push(self, item: WasmType):
         self.items.append(item)
 
@@ -93,8 +97,7 @@ class Machine:
             )
         locals = dict(enumerate(args))
         exec = Executor(locals=locals)
-        for instruction in func.code.expr.instructions:
-            instruction.accept(exec)
+        exec.execute(func.code.expr.instructions)
         if func.does_return:
             return exec.pop()
 
