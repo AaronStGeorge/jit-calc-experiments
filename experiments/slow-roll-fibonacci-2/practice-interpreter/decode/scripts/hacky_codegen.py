@@ -64,7 +64,11 @@ def gen(instructions: Mapping[str, List[str]]) -> str:
         attributes = []
         if len(args) > 0:
             constructor_args = (
-                f"({', '.join(map(lambda x: type_to_parsing_fn[x], args))})"
+                # The extra comma in the string below ensures that python
+                # evaluates the arguments as a tuple. Python  evaluates `(1)` to
+                # `1`, but it evaluates `(1,)` to a tuple containing `1`. We
+                # want the latter.
+                f"({', '.join(map(lambda x: type_to_parsing_fn[x], args))},)"
             )
             arg_types = ", ".join(args)
             attributes.append(args_template.format(arg_types=arg_types))

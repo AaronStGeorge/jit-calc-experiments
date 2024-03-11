@@ -1,6 +1,6 @@
 import argparse
-from dataclasses import dataclass
-from typing import List, Tuple, Union, Dict
+from dataclasses import dataclass, field
+from typing import Callable, List, Optional, Tuple, Union, Dict
 import decode
 
 WasmType = Union[
@@ -15,32 +15,28 @@ WasmType = Union[
 ]
 
 
+@dataclass
 class Function:
-    def __init__(self, nparams: int, code: decode.Code):
-        self.nparams = nparams
-        self.nparams = nparams
-        self.code = code
+    nparams: int
+    code: decode.Code
+    does_return: bool
 
 
-class Machine(decode.Visitor):
-    def __init__(self, functions: List[Function]):
-        self.functions = functions
-        # 1 gb stack
-        self.memory = bytearray(1024 * 1024 * 1024)
+@dataclass
+class Executor(decode.Visitor):
+    locals: Dict[int, WasmType]
+    items: List[WasmType] = field(default_factory=list)
 
-    def call(self, func_idx: decode.func_idx, *args: Tuple[WasmType, ...]):
-        func = self.functions[func_idx]
-        if len(args) != func.nparams:
-            s = ("s" if func.nparams > 1 else "",)
-            raise ValueError(
-                f"func with index {func_idx} expected {func.nparams} arg{s}"
-            )
-        locals = dict(enumerate(args))
-        self.execute(func.code, locals)
+    def push(self, item: WasmType):
+        self.items.append(item)
 
-    def execute(self, code: decode.Code, locals: Dict[int, WasmType]):
-        for instruction in code.expr.instructions:
-            instruction.accept(self)
+    def pop(self):
+        return self.items.pop()
+
+    def binary(self, op: Callable[[WasmType, WasmType], WasmType]):
+        right = self.pop()
+        left = self.pop()
+        self.push(op(left, right))
 
     def visit_block(self, instruction: decode.block) -> None:
         pass
@@ -61,7 +57,8 @@ class Machine(decode.Visitor):
         pass
 
     def visit_local_get(self, instruction: decode.local_get) -> None:
-        print(instruction.name)
+        item = self.locals[instruction.args[0]]
+        self.push(item)
 
     def visit_local_set(self, instruction: decode.local_set) -> None:
         pass
@@ -76,7 +73,30 @@ class Machine(decode.Visitor):
         pass
 
     def visit_i32_add(self, instruction: decode.i32_add) -> None:
-        print(instruction.name)
+        self.binary(lambda right, left: right + left)
+
+
+class Machine:
+    def __init__(self, functions: List[Function]):
+        self.functions = functions
+        # 1 gb
+        self.memory = bytearray(1024 * 1024 * 1024)
+
+    def call(
+        self, func_idx: decode.func_idx, *args: Tuple[WasmType, ...]
+    ) -> Optional[WasmType]:
+        func = self.functions[func_idx]
+        if len(args) != func.nparams:
+            s = ("s" if func.nparams > 1 else "",)
+            raise ValueError(
+                f"func with index {func_idx} expected {func.nparams} arg{s}"
+            )
+        locals = dict(enumerate(args))
+        exec = Executor(locals=locals)
+        for instruction in func.code.expr.instructions:
+            instruction.accept(exec)
+        if func.does_return:
+            return exec.pop()
 
 
 if __name__ == "__main__":
@@ -101,7 +121,13 @@ if __name__ == "__main__":
         functions = []
         for type_idx, code in zip(module.func_sec, module.code_sec):
             func_type = module.type_sec[type_idx]
-            functions.append(Function(nparams=len(func_type.param_types), code=code))
+            functions.append(
+                Function(
+                    nparams=len(func_type.param_types),
+                    code=code,
+                    does_return=bool(func_type.result_types),
+                )
+            )
 
         # find the function user wants
         exports = {
@@ -116,4 +142,6 @@ if __name__ == "__main__":
 
         # let's do it like they do on the discovery channel
         machine = Machine(functions=functions)
-        machine.call(exports[args.func], *args.args)
+        result = machine.call(exports[args.func], *args.args)
+        if result:
+            print(result)

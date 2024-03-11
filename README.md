@@ -4,6 +4,16 @@
 one day, be squished into the shape of a runtime engine for a game where NPC
 robots execute player code.
 
+<!-- Notes on updating things to be apple silicon centric
+
+You'll need a clang with webassembly
+```
+$ brew install llvm
+$ export PATH="/opt/homebrew/opt/llvm/bin:$PATH"
+```
+
+-->
+
 ## Building
 
 Look, "experiments" is in the name, there's going to be some weird shit.

@@ -148,7 +148,7 @@ class br(Instruction):
 
     @classmethod
     def parse(cls, stream: Iterator[bytes]):
-        return cls((parse_signed(stream)))
+        return cls((parse_signed(stream),))
 
 
 @dataclass
@@ -161,7 +161,7 @@ class br_if(Instruction):
 
     @classmethod
     def parse(cls, stream: Iterator[bytes]):
-        return cls((parse_signed(stream)))
+        return cls((parse_signed(stream),))
 
 
 @dataclass
@@ -174,7 +174,7 @@ class local_get(Instruction):
 
     @classmethod
     def parse(cls, stream: Iterator[bytes]):
-        return cls((parse_signed(stream)))
+        return cls((parse_signed(stream),))
 
 
 @dataclass
@@ -187,7 +187,7 @@ class local_set(Instruction):
 
     @classmethod
     def parse(cls, stream: Iterator[bytes]):
-        return cls((parse_signed(stream)))
+        return cls((parse_signed(stream),))
 
 
 @dataclass
@@ -200,7 +200,7 @@ class local_tee(Instruction):
 
     @classmethod
     def parse(cls, stream: Iterator[bytes]):
-        return cls((parse_signed(stream)))
+        return cls((parse_signed(stream),))
 
 
 @dataclass
@@ -213,7 +213,7 @@ class i32_const(Instruction):
 
     @classmethod
     def parse(cls, stream: Iterator[bytes]):
-        return cls((parse_signed(stream)))
+        return cls((parse_signed(stream),))
 
 
 @dataclass
