@@ -187,7 +187,7 @@ class Code:
     https://webassembly.github.io/spec/core/binary/modules.html#binary-code
     """
 
-    locals: List
+    locals: List[Local]
     expr: Expression
 
     @classmethod

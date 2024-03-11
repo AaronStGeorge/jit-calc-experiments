@@ -24,18 +24,18 @@ class Function:
 
 @dataclass
 class Executor(decode.Visitor):
-    locals: Dict[int, WasmType]
-    items: List[WasmType] = field(default_factory=list)
+    locals: List[WasmType]
+    stack: List[WasmType] = field(default_factory=list)
 
     def execute(self, instructions: List[decode.Instruction]):
         for instruction in instructions:
             instruction.accept(self)
 
     def push(self, item: WasmType):
-        self.items.append(item)
+        self.stack.append(item)
 
     def pop(self):
-        return self.items.pop()
+        return self.stack.pop()
 
     def binary(self, op: Callable[[WasmType, WasmType], WasmType]):
         right = self.pop()
@@ -89,13 +89,26 @@ class Machine:
     def call(
         self, func_idx: decode.func_idx, *args: Tuple[WasmType, ...]
     ) -> Optional[WasmType]:
-        func = self.functions[func_idx]
+        func: Function = self.functions[func_idx]
         if len(args) != func.nparams:
             s = ("s" if func.nparams > 1 else "",)
             raise ValueError(
                 f"func with index {func_idx} expected {func.nparams} arg{s}"
             )
-        locals = dict(enumerate(args))
+        # If a function has 4 locals of type i32 and 2 of type f32 (spelled out
+        # in python: "[Local(type="i32", n=4), Local(type="f32", n=2)]") the
+        # instructions of said function will contain get and set instructions
+        # expecting the locals to be ordered: [i32,i32,i32,i32, f32,f32]. Since
+        # python doesn't care about types. we just splat everything into one big
+        # array of 0s.
+        splatted_locals = sum(([0] * local.n for local in func.code.locals), [])
+        # From the wasm spec: "The index space for locals is only accessible
+        # inside a function and includes the parameters of that function, which
+        # precede the local variables." So for a function with 1 param of type
+        # i32, 2 params of type i64, 4 locals of type i32, and 2 locals of type
+        # f32 the locals are expected to be laid out in this order:
+        #   [i32, i64,i64, i32,i32,i32,i32, f32,f32]
+        locals = list(args) + splatted_locals
         exec = Executor(locals=locals)
         exec.execute(func.code.expr.instructions)
         if func.does_return:
