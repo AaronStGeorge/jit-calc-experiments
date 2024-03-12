@@ -239,7 +239,7 @@ if __name__ == "__main__":
         "args",
         type=int,
         nargs="*",
-        help="Arguments to exported function(currently limited to just int types)",
+        help="Arguments to exported function (currently limited to just int types)",
     )
 
     prog_args = parser.parse_args()
