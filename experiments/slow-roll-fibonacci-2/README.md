@@ -40,7 +40,7 @@ multitasking.
 		- We'll need somewhere to insert the swap calls, an MLIR pass would be a
 			very nice way to do this.
 - [ ] create a webassembly runtime using MLIR good enough to run fibonacci
-	- [ ] write a webassembly interpreter for practice (also only that's good enough to do fibonacci).
+	- [x] write a webassembly interpreter for practice (also only that's good enough to do fibonacci).
 	- [ ] create an MLIR webassembly dialect.
 	- [ ] write a compiler?,assembler? that takes serialized wasm and generates MLIR webasembly dialect.
 	- [ ] write an MLIR pass on the webassembly dialect to insert instruction counts and swap calls when limit is reached.

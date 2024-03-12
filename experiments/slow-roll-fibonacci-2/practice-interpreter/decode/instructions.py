@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Iterator, List, Mapping, Tuple, Dict
+from typing import Generic, Iterator, List, Mapping, Tuple, Dict, TypeVar
 from abc import ABC, abstractmethod
 
 from .utils import (
@@ -22,6 +22,8 @@ from .indices import (
     label_idx,
 )
 
+T = TypeVar("T")
+
 
 class Instruction(ABC):
     """
@@ -36,7 +38,7 @@ class Instruction(ABC):
         """
 
     @abstractmethod
-    def accept(self, visitor: "Visitor") -> None:
+    def accept(self, visitor: "Visitor[T]") -> T:
         pass
 
     @classmethod
@@ -69,8 +71,8 @@ class block(Instruction):
     instructions: List[Instruction]
     name: str = "block"
 
-    def accept(self, visitor: "Visitor") -> None:
-        visitor.visit_block(self)
+    def accept(self, visitor: "Visitor[T]") -> T:
+        return visitor.visit_block(self)
 
     @classmethod
     def parse(cls, stream: Iterator[bytes]):
@@ -83,22 +85,22 @@ class loop(Instruction):
     instructions: List[Instruction]
     name: str = "loop"
 
-    def accept(self, visitor: "Visitor") -> None:
-        visitor.visit_loop(self)
+    def accept(self, visitor: "Visitor[T]") -> T:
+        return visitor.visit_loop(self)
 
     @classmethod
     def parse(cls, stream: Iterator[bytes]):
         return cls(parse_valtype(stream), parse_instruction_list(stream))
 
 
-class ManualVisitor(ABC):
+class ManualVisitor(ABC, Generic[T]):
 
     @abstractmethod
-    def visit_block(self, instruction: block) -> None:
+    def visit_block(self, instruction: block) -> T:
         pass
 
     @abstractmethod
-    def visit_loop(self, instruction: loop) -> None:
+    def visit_loop(self, instruction: loop) -> T:
         pass
 
 
@@ -118,8 +120,8 @@ class ManualVisitor(ABC):
 class unreachable(Instruction):
     name: str = "unreachable"
 
-    def accept(self, visitor: "Visitor") -> None:
-        visitor.visit_unreachable(self)
+    def accept(self, visitor: "Visitor[T]") -> T:
+        return visitor.visit_unreachable(self)
 
     @classmethod
     def parse(cls, stream: Iterator[bytes]):
@@ -130,8 +132,8 @@ class unreachable(Instruction):
 class nop(Instruction):
     name: str = "nop"
 
-    def accept(self, visitor: "Visitor") -> None:
-        visitor.visit_nop(self)
+    def accept(self, visitor: "Visitor[T]") -> T:
+        return visitor.visit_nop(self)
 
     @classmethod
     def parse(cls, stream: Iterator[bytes]):
@@ -143,8 +145,8 @@ class br(Instruction):
     args: Tuple[label_idx]
     name: str = "br"
 
-    def accept(self, visitor: "Visitor") -> None:
-        visitor.visit_br(self)
+    def accept(self, visitor: "Visitor[T]") -> T:
+        return visitor.visit_br(self)
 
     @classmethod
     def parse(cls, stream: Iterator[bytes]):
@@ -156,8 +158,8 @@ class br_if(Instruction):
     args: Tuple[label_idx]
     name: str = "br_if"
 
-    def accept(self, visitor: "Visitor") -> None:
-        visitor.visit_br_if(self)
+    def accept(self, visitor: "Visitor[T]") -> T:
+        return visitor.visit_br_if(self)
 
     @classmethod
     def parse(cls, stream: Iterator[bytes]):
@@ -169,8 +171,8 @@ class local_get(Instruction):
     args: Tuple[local_idx]
     name: str = "local.get"
 
-    def accept(self, visitor: "Visitor") -> None:
-        visitor.visit_local_get(self)
+    def accept(self, visitor: "Visitor[T]") -> T:
+        return visitor.visit_local_get(self)
 
     @classmethod
     def parse(cls, stream: Iterator[bytes]):
@@ -182,8 +184,8 @@ class local_set(Instruction):
     args: Tuple[local_idx]
     name: str = "local.set"
 
-    def accept(self, visitor: "Visitor") -> None:
-        visitor.visit_local_set(self)
+    def accept(self, visitor: "Visitor[T]") -> T:
+        return visitor.visit_local_set(self)
 
     @classmethod
     def parse(cls, stream: Iterator[bytes]):
@@ -195,8 +197,8 @@ class local_tee(Instruction):
     args: Tuple[local_idx]
     name: str = "local.tee"
 
-    def accept(self, visitor: "Visitor") -> None:
-        visitor.visit_local_tee(self)
+    def accept(self, visitor: "Visitor[T]") -> T:
+        return visitor.visit_local_tee(self)
 
     @classmethod
     def parse(cls, stream: Iterator[bytes]):
@@ -208,8 +210,8 @@ class i32_const(Instruction):
     args: Tuple[i32]
     name: str = "i32.const"
 
-    def accept(self, visitor: "Visitor") -> None:
-        visitor.visit_i32_const(self)
+    def accept(self, visitor: "Visitor[T]") -> T:
+        return visitor.visit_i32_const(self)
 
     @classmethod
     def parse(cls, stream: Iterator[bytes]):
@@ -220,8 +222,8 @@ class i32_const(Instruction):
 class i32_ge_s(Instruction):
     name: str = "i32.ge_s"
 
-    def accept(self, visitor: "Visitor") -> None:
-        visitor.visit_i32_ge_s(self)
+    def accept(self, visitor: "Visitor[T]") -> T:
+        return visitor.visit_i32_ge_s(self)
 
     @classmethod
     def parse(cls, stream: Iterator[bytes]):
@@ -232,8 +234,8 @@ class i32_ge_s(Instruction):
 class i32_add(Instruction):
     name: str = "i32.add"
 
-    def accept(self, visitor: "Visitor") -> None:
-        visitor.visit_i32_add(self)
+    def accept(self, visitor: "Visitor[T]") -> T:
+        return visitor.visit_i32_add(self)
 
     @classmethod
     def parse(cls, stream: Iterator[bytes]):
@@ -255,51 +257,51 @@ def op_code_to_generated_class() -> Dict[int, Instruction]:
     }
 
 
-class GeneratedVisitor(ABC):
+class GeneratedVisitor(ABC, Generic[T]):
 
     @abstractmethod
-    def visit_unreachable(self, instruction: unreachable) -> None:
+    def visit_unreachable(self, instruction: unreachable) -> T:
         pass
 
     @abstractmethod
-    def visit_nop(self, instruction: nop) -> None:
+    def visit_nop(self, instruction: nop) -> T:
         pass
 
     @abstractmethod
-    def visit_br(self, instruction: br) -> None:
+    def visit_br(self, instruction: br) -> T:
         pass
 
     @abstractmethod
-    def visit_br_if(self, instruction: br_if) -> None:
+    def visit_br_if(self, instruction: br_if) -> T:
         pass
 
     @abstractmethod
-    def visit_local_get(self, instruction: local_get) -> None:
+    def visit_local_get(self, instruction: local_get) -> T:
         pass
 
     @abstractmethod
-    def visit_local_set(self, instruction: local_set) -> None:
+    def visit_local_set(self, instruction: local_set) -> T:
         pass
 
     @abstractmethod
-    def visit_local_tee(self, instruction: local_tee) -> None:
+    def visit_local_tee(self, instruction: local_tee) -> T:
         pass
 
     @abstractmethod
-    def visit_i32_const(self, instruction: i32_const) -> None:
+    def visit_i32_const(self, instruction: i32_const) -> T:
         pass
 
     @abstractmethod
-    def visit_i32_ge_s(self, instruction: i32_ge_s) -> None:
+    def visit_i32_ge_s(self, instruction: i32_ge_s) -> T:
         pass
 
     @abstractmethod
-    def visit_i32_add(self, instruction: i32_add) -> None:
+    def visit_i32_add(self, instruction: i32_add) -> T:
         pass
 
 
 ##GEN_STOP##
 
 
-class Visitor(ManualVisitor, GeneratedVisitor):
+class Visitor(ManualVisitor[T], GeneratedVisitor[T]):
     """ """

@@ -16,8 +16,8 @@ INSTRUCTION_CLASS_TEMPLATE = """
 class {class_name}(Instruction):
     {attributes}
 
-    def accept(self, visitor: "Visitor") -> None:
-        visitor.visit_{class_name}(self)
+    def accept(self, visitor: "Visitor[T]") -> T:
+        return visitor.visit_{class_name}(self)
 
     @classmethod
     def parse(cls, stream: Iterator[bytes]):
@@ -26,14 +26,14 @@ class {class_name}(Instruction):
 """
 
 VISITOR_CLASS_TEMPLATE = """
-class GeneratedVisitor(ABC):
+class GeneratedVisitor(ABC, Generic[T]):
 {visitor_methods}
 
 """
 
 VISITOR_METHOD_TEMPLATE = """
     @abstractmethod
-    def visit_{class_name}(self, instruction: {class_name}) -> None:
+    def visit_{class_name}(self, instruction: {class_name}) -> T:
         pass
 """
 
