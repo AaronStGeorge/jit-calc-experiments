@@ -3,11 +3,11 @@ from typing import Generic, Iterator, List, Mapping, Tuple, Dict, TypeVar
 from abc import ABC, abstractmethod
 
 from .utils import (
-    parse_float32,
-    parse_float64,
-    parse_signed,
-    parse_unsigned,
-    parse_valtype,
+    decode_float32,
+    decode_float64,
+    decode_signed,
+    decode_unsigned,
+    decode_valtype,
 )
 from .wasm_types import i32, i64, f32, f64
 from .indices import (
@@ -38,22 +38,22 @@ class Instruction(ABC):
         """
 
     @abstractmethod
-    def accept(self, visitor: "Visitor[T]") -> T:
+    def accept(self, visitor: "InstructionVisitor[T]") -> T:
         pass
 
     @classmethod
-    def parse(cls, op_code: int, stream: Iterator[bytes]):
+    def decode(cls, op_code: int, stream: Iterator[bytes]):
         op_code_to_class: Mapping[int, Instruction] = {
             **op_code_to_generated_class(),
             0x02: block,
             0x03: loop,
         }
-        return op_code_to_class[op_code].parse(stream)
+        return op_code_to_class[op_code].decode(stream)
 
 
-def parse_instruction_list(stream: Iterator[bytes]) -> List[Instruction]:
+def decode_instruction_list(stream: Iterator[bytes]) -> List[Instruction]:
     """
-    Parse instructions until op_code 0x0B comes up. Wasm spec uses this in
+    Decode instructions until op_code 0x0B comes up. Wasm spec uses this in
     several places.
     """
     instructions: List[Instruction] = []
@@ -61,7 +61,7 @@ def parse_instruction_list(stream: Iterator[bytes]) -> List[Instruction]:
         op_code = next(stream)
         if op_code == 0x0B:
             break
-        instructions.append(Instruction.parse(op_code, stream))
+        instructions.append(Instruction.decode(op_code, stream))
     return instructions
 
 
@@ -71,12 +71,12 @@ class block(Instruction):
     instructions: List[Instruction]
     name: str = "block"
 
-    def accept(self, visitor: "Visitor[T]") -> T:
+    def accept(self, visitor: "InstructionVisitor[T]") -> T:
         return visitor.visit_block(self)
 
     @classmethod
-    def parse(cls, stream: Iterator[bytes]):
-        return cls(parse_valtype(stream), parse_instruction_list(stream))
+    def decode(cls, stream: Iterator[bytes]):
+        return cls(decode_valtype(stream), decode_instruction_list(stream))
 
 
 @dataclass
@@ -85,15 +85,15 @@ class loop(Instruction):
     instructions: List[Instruction]
     name: str = "loop"
 
-    def accept(self, visitor: "Visitor[T]") -> T:
+    def accept(self, visitor: "InstructionVisitor[T]") -> T:
         return visitor.visit_loop(self)
 
     @classmethod
-    def parse(cls, stream: Iterator[bytes]):
-        return cls(parse_valtype(stream), parse_instruction_list(stream))
+    def decode(cls, stream: Iterator[bytes]):
+        return cls(decode_valtype(stream), decode_instruction_list(stream))
 
 
-class ManualVisitor(ABC, Generic[T]):
+class _ManualVisitor(ABC, Generic[T]):
 
     @abstractmethod
     def visit_block(self, instruction: block) -> T:
@@ -124,7 +124,7 @@ class unreachable(Instruction):
         return visitor.visit_unreachable(self)
 
     @classmethod
-    def parse(cls, stream: Iterator[bytes]):
+    def decode(cls, stream: Iterator[bytes]):
         return cls()
 
 
@@ -136,7 +136,7 @@ class nop(Instruction):
         return visitor.visit_nop(self)
 
     @classmethod
-    def parse(cls, stream: Iterator[bytes]):
+    def decode(cls, stream: Iterator[bytes]):
         return cls()
 
 
@@ -149,8 +149,8 @@ class br(Instruction):
         return visitor.visit_br(self)
 
     @classmethod
-    def parse(cls, stream: Iterator[bytes]):
-        return cls((parse_signed(stream),))
+    def decode(cls, stream: Iterator[bytes]):
+        return cls((decode_signed(stream),))
 
 
 @dataclass
@@ -162,8 +162,8 @@ class br_if(Instruction):
         return visitor.visit_br_if(self)
 
     @classmethod
-    def parse(cls, stream: Iterator[bytes]):
-        return cls((parse_signed(stream),))
+    def decode(cls, stream: Iterator[bytes]):
+        return cls((decode_signed(stream),))
 
 
 @dataclass
@@ -175,8 +175,8 @@ class local_get(Instruction):
         return visitor.visit_local_get(self)
 
     @classmethod
-    def parse(cls, stream: Iterator[bytes]):
-        return cls((parse_signed(stream),))
+    def decode(cls, stream: Iterator[bytes]):
+        return cls((decode_signed(stream),))
 
 
 @dataclass
@@ -188,8 +188,8 @@ class local_set(Instruction):
         return visitor.visit_local_set(self)
 
     @classmethod
-    def parse(cls, stream: Iterator[bytes]):
-        return cls((parse_signed(stream),))
+    def decode(cls, stream: Iterator[bytes]):
+        return cls((decode_signed(stream),))
 
 
 @dataclass
@@ -201,8 +201,8 @@ class local_tee(Instruction):
         return visitor.visit_local_tee(self)
 
     @classmethod
-    def parse(cls, stream: Iterator[bytes]):
-        return cls((parse_signed(stream),))
+    def decode(cls, stream: Iterator[bytes]):
+        return cls((decode_signed(stream),))
 
 
 @dataclass
@@ -214,8 +214,8 @@ class i32_const(Instruction):
         return visitor.visit_i32_const(self)
 
     @classmethod
-    def parse(cls, stream: Iterator[bytes]):
-        return cls((parse_signed(stream),))
+    def decode(cls, stream: Iterator[bytes]):
+        return cls((decode_signed(stream),))
 
 
 @dataclass
@@ -226,7 +226,7 @@ class i32_ge_s(Instruction):
         return visitor.visit_i32_ge_s(self)
 
     @classmethod
-    def parse(cls, stream: Iterator[bytes]):
+    def decode(cls, stream: Iterator[bytes]):
         return cls()
 
 
@@ -238,7 +238,7 @@ class i32_add(Instruction):
         return visitor.visit_i32_add(self)
 
     @classmethod
-    def parse(cls, stream: Iterator[bytes]):
+    def decode(cls, stream: Iterator[bytes]):
         return cls()
 
 
@@ -257,7 +257,7 @@ def op_code_to_generated_class() -> Dict[int, Instruction]:
     }
 
 
-class GeneratedVisitor(ABC, Generic[T]):
+class _GeneratedVisitor(ABC, Generic[T]):
 
     @abstractmethod
     def visit_unreachable(self, instruction: unreachable) -> T:
@@ -303,5 +303,5 @@ class GeneratedVisitor(ABC, Generic[T]):
 ##GEN_STOP##
 
 
-class Visitor(ManualVisitor[T], GeneratedVisitor[T]):
+class InstructionVisitor(_ManualVisitor[T], _GeneratedVisitor[T]):
     """ """

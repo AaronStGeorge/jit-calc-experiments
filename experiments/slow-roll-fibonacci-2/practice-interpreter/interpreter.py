@@ -1,55 +1,45 @@
 import argparse
 from dataclasses import dataclass, field
-from typing import Callable, List, Optional, Tuple, Union, Dict
-import decode
+from typing import Callable, List, Optional, Tuple
 
-WasmType = Union[
-    decode.i32,
-    decode.u32,
-    decode.s32,
-    decode.i64,
-    decode.u64,
-    decode.s64,
-    decode.f32,
-    decode.f64,
-]
+import wasm
 
 
 @dataclass
 class Function:
     nparams: int
-    code: decode.Code
+    code: wasm.Code
     does_return: bool
 
 
 @dataclass
 class Break:
-    target_idx: decode.label_idx
+    target_idx: wasm.label_idx
 
 
 @dataclass
-class Executor(decode.Visitor[Optional[Break]]):
-    wasm_locals: List[WasmType]
-    stack: List[WasmType] = field(default_factory=list)
+class Executor(wasm.InstructionVisitor[Optional[Break]]):
+    wasm_locals: List[wasm.WasmType]
+    stack: List[wasm.WasmType] = field(default_factory=list)
 
-    def execute(self, instructions: List[decode.Instruction]) -> Optional[Break]:
+    def execute(self, instructions: List[wasm.Instruction]) -> Optional[Break]:
         for instruction in instructions:
             maybe_br = instruction.accept(self)
             if maybe_br:
                 return maybe_br
 
-    def push(self, item: WasmType):
+    def push(self, item: wasm.WasmType):
         self.stack.append(item)
 
     def pop(self):
         return self.stack.pop()
 
-    def binary(self, op: Callable[[WasmType, WasmType], WasmType]):
+    def binary(self, op: Callable[[wasm.WasmType, wasm.WasmType], wasm.WasmType]):
         right = self.pop()
         left = self.pop()
         self.push(op(left, right))
 
-    def visit_block(self, instruction: decode.block) -> Optional[Break]:
+    def visit_block(self, instruction: wasm.block) -> Optional[Break]:
         """
         From the wasm spec:
             Unlike with other index spaces, indexing of labels is relative by
@@ -66,34 +56,31 @@ class Executor(decode.Visitor[Optional[Break]]):
 
         Example of block behavior:
             # if (test) { consequence } else {alternative }
-            ('block', [
-                        ('block', [
-                                    test
-                                    ('br_if, 0),  # Goto 0
-                                    alternative,
-                                    ('br', 1),    # Goto 1
-                                  ]
-                        ),  # Label: 0
-                        consequence,
-                      ]
-            ) # Label: 1
+            block [
+                block [
+                    (test)
+                    br_if 0       # Goto 0
+                    (alternative)
+                    br 1          # Goto 1
+                ]                 # Label: 0
+                (consequence)
+            ]                     # Label: 1
         """
         maybe_br = self.execute(instruction.instructions)
         if maybe_br and maybe_br.target_idx == 0:
-            # a break statement targeted this block, we should execute
-            # "consequence" from the example in the docstring AKA the next
-            # instruction in the current scope.
+            # a break statement targeted this block, no need to cascade, the
+            # break has been handled.
             return None
         elif maybe_br and maybe_br.target_idx > 0:
             # a break statement targeted a scope greater than this block,
-            # decrement the scope count and continue breaking.
+            # decrement the scope count and cascade break to outer scope.
             maybe_br.target_idx -= 1
             return maybe_br
         else:
-            # we ran off the end of the block, execute next instruction
+            # we ran off the end of the block.
             return None
 
-    def visit_loop(self, instruction: decode.loop) -> None:
+    def visit_loop(self, instruction: wasm.loop) -> None:
         """
         From the wasm spec:
             Unlike with other index spaces, indexing of labels is relative by
@@ -110,87 +97,81 @@ class Executor(decode.Visitor[Optional[Break]]):
 
         Examples of loop behavior:
             # while (test) { body }
-            ('block', [
-                        ('loop', [ # Label: 0
-                                    not test
-                                    ('br_if', 1), # Goto 1:  (break)
-                                    body
-                                    ('br', 0),    # Goto 0:  (continue)
-                                 ]
-                        ),
-                      ]
-            ) # Label: 1
-
+            block [
+                loop [            # Label: 0
+                    (not test)
+                    br_if 1       # Goto 1 (break)
+                    (body)
+                    br 0,         # Goto 0 (continue)
+                ]
+            ]                     # Label: 1
 
             # for(int i = 0; i < n; i++) { body }
             # # which gets converted to # #
-            #   while (n) {
-            #       body;
-            #       n --;
-            #   }
-            ('block', [
-                        ('block', [
-                                    load n >= 1 onto stack
-                                    ('br_if, 0),  # Goto 0
-                                    ('br', 1),    # Goto 1
-                                  ]
-                        ),  # Label: 0 from inner block
-                        ('loop', [ # Label: 0 from inner loop
-                                    body
-                                    n --;
-                                    load n >= 1 onto stack
-                                    ('br_if', 0),    # Goto 0:  (continue)
-                                 ]
-                        ),
-                      ]
-            ) # Label: 1 from inner block
+            # while (n) {
+            #     body;
+            #     n --;
+            # }
+            block [
+                block [
+                    (load n >= 1 onto stack)
+                    br_if 0                   # Goto 0
+                    br 1                      # Goto 1
+                ]                             # Label: 0 (from inner block)
+                loop [                        # Label: 0 (from *loop*)
+                    (body)
+                    (n --)
+                    (load n >= 1 onto stack)
+                    ('br_if', 0),             # Goto 0 (continue)
+                ]
+            ]                                 # Label: 1 (from inner block)
         """
         # execute first iteration of loop
         maybe_br = self.execute(instruction.instructions)
         # continue to execute loop iterations as long as a break targeting the
-        # loop ("continue") is issued from inside the loop.
+        # loop (AKA a "continue") is issued from inside the loop.
         while maybe_br and maybe_br.target_idx == 0:
             maybe_br = self.execute(instruction.instructions)
 
         if maybe_br and maybe_br.target_idx > 0:
             # a break statement targeted a scope greater than this block,
-            # decrement the scope count and continue breaking.
+            # decrement the scope count and cascade break to outer scope.
             maybe_br.target_idx -= 1
             return maybe_br
         else:
             # we ran off the end of the loop
             return None
 
-    def visit_unreachable(self, instruction: decode.unreachable) -> None:
+    def visit_unreachable(self, instruction: wasm.unreachable) -> None:
         pass
 
-    def visit_nop(self, instruction: decode.nop) -> None:
+    def visit_nop(self, instruction: wasm.nop) -> None:
         pass
 
-    def visit_br(self, instruction: decode.br) -> Optional[Break]:
+    def visit_br(self, instruction: wasm.br) -> Optional[Break]:
         return Break(instruction.args[0])
 
-    def visit_br_if(self, instruction: decode.br_if) -> Optional[Break]:
+    def visit_br_if(self, instruction: wasm.br_if) -> Optional[Break]:
         if self.pop():
             return Break(instruction.args[0])
 
-    def visit_local_get(self, instruction: decode.local_get) -> None:
+    def visit_local_get(self, instruction: wasm.local_get) -> None:
         self.push(self.wasm_locals[instruction.args[0]])
 
-    def visit_local_set(self, instruction: decode.local_set) -> None:
+    def visit_local_set(self, instruction: wasm.local_set) -> None:
         self.wasm_locals[instruction.args[0]] = self.pop()
 
-    def visit_local_tee(self, instruction: decode.local_tee) -> None:
+    def visit_local_tee(self, instruction: wasm.local_tee) -> None:
         self.wasm_locals[instruction.args[0]] = self.stack[-1]
 
-    def visit_i32_const(self, instruction: decode.i32_const) -> None:
-        self.push(decode.i32(instruction.args[0]))
+    def visit_i32_const(self, instruction: wasm.i32_const) -> None:
+        self.push(wasm.i32(instruction.args[0]))
 
-    def visit_i32_ge_s(self, instruction: decode.i32_ge_s) -> None:
-        self.binary(lambda right, left: decode.i32(right >= left))
+    def visit_i32_ge_s(self, _: wasm.i32_ge_s) -> None:
+        self.binary(lambda right, left: wasm.i32(right >= left))
 
-    def visit_i32_add(self, instruction: decode.i32_add) -> None:
-        self.binary(lambda right, left: decode.i32(right + left))
+    def visit_i32_add(self, _: wasm.i32_add) -> None:
+        self.binary(lambda right, left: wasm.i32(right + left))
 
 
 class Machine:
@@ -200,8 +181,8 @@ class Machine:
         self.memory = bytearray(1024 * 1024 * 1024)
 
     def call(
-        self, func_idx: decode.func_idx, *args: Tuple[WasmType, ...]
-    ) -> Optional[WasmType]:
+        self, func_idx: wasm.func_idx, *args: Tuple[wasm.WasmType, ...]
+    ) -> Optional[wasm.WasmType]:
         func: Function = self.functions[func_idx]
         if len(args) != func.nparams:
             s = ("s" if func.nparams > 1 else "",)
@@ -247,7 +228,7 @@ if __name__ == "__main__":
     with open(prog_args.wasm_file, "rb") as file:
         # decode module
         stream = iter(bytes(file.read()))
-        module = decode.parse_module(stream)
+        module = wasm.decode(stream)
 
         # pull functions from module
         functions = []
@@ -265,7 +246,7 @@ if __name__ == "__main__":
         exports = {
             export.name: export.ref
             for export in module.export_sec
-            if isinstance(export, decode.ExportFunction)
+            if isinstance(export, wasm.ExportFunction)
         }
         if prog_args.func not in exports:
             raise ValueError(

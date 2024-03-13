@@ -4,7 +4,7 @@ import struct
 from typing import Callable, Iterator, List
 
 
-def parse_unsigned(stream: Iterator[bytes]) -> int:
+def decode_unsigned(stream: Iterator[bytes]) -> int:
     """
     All integers are encoded using Little Endian Base 128 (LEB128) variable
     length encoding.
@@ -37,9 +37,9 @@ def parse_unsigned(stream: Iterator[bytes]) -> int:
     return value
 
 
-def parse_signed(stream: Iterator[bytes]) -> int:
+def decode_signed(stream: Iterator[bytes]) -> int:
     """
-    Exactly like parse_unsigned byt with sign extension
+    Exactly like decode_unsigned byt with sign extension
     """
     value = 0
     shift = 0
@@ -57,21 +57,21 @@ def parse_signed(stream: Iterator[bytes]) -> int:
     return value
 
 
-def parse_vector(
-    stream: Iterator[bytes], parsing_function: Callable[[Iterator[bytes]], any]
+def decode_vector(
+    stream: Iterator[bytes], decoding_function: Callable[[Iterator[bytes]], any]
 ) -> List[AST]:
     """
     https://webassembly.github.io/spec/core/binary/conventions.html#vectors
     """
-    num = parse_unsigned(stream)
-    return [parsing_function(stream) for _ in range(num)]
+    num = decode_unsigned(stream)
+    return [decoding_function(stream) for _ in range(num)]
 
 
-def parse_string(stream) -> str:
-    return bytes(parse_vector(stream, next)).decode("utf-8")
+def decode_string(stream) -> str:
+    return bytes(decode_vector(stream, next)).decode("utf-8")
 
 
-def parse_valtype(stream: Iterator[bytes]) -> str:
+def decode_valtype(stream: Iterator[bytes]) -> str:
     """
     https://webassembly.github.io/spec/core/binary/types.html#value-types
 
@@ -96,7 +96,7 @@ def parse_valtype(stream: Iterator[bytes]) -> str:
     return encoding_to_type[b]
 
 
-def parse_float32(stream: Iterator[bytes]):
+def decode_float32(stream: Iterator[bytes]):
     """
     "<" indicates little endian byte order
     "f" indicates 32-bit IEEE 754 floating point (AKA a C float)
@@ -104,7 +104,7 @@ def parse_float32(stream: Iterator[bytes]):
     return struct.unpack("<f", bytes(islice(stream, 4)))[0]
 
 
-def parse_float64(stream):
+def decode_float64(stream):
     """
     "<" indicates little endian byte order
     "l" indicates 64-bit IEEE 754 floating point (AKA a C double)

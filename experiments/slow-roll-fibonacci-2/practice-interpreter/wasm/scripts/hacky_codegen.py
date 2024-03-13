@@ -2,13 +2,13 @@ from typing import List, Mapping
 
 
 type_to_parsing_fn = {
-    "i32": "parse_signed(stream)",
-    "i64": "parse_signed(stream)",
-    "f32": "parse_float32(stream)",
-    "f64": "parse_float64(stream)",
-    "local_idx": "parse_signed(stream)",
-    "global_idx": "parse_signed(stream)",
-    "label_idx": "parse_signed(stream)",
+    "i32": "decode_signed(stream)",
+    "i64": "decode_signed(stream)",
+    "f32": "decode_float32(stream)",
+    "f64": "decode_float64(stream)",
+    "local_idx": "decode_signed(stream)",
+    "global_idx": "decode_signed(stream)",
+    "label_idx": "decode_signed(stream)",
 }
 
 INSTRUCTION_CLASS_TEMPLATE = """
@@ -20,13 +20,13 @@ class {class_name}(Instruction):
         return visitor.visit_{class_name}(self)
 
     @classmethod
-    def parse(cls, stream: Iterator[bytes]):
+    def decode(cls, stream: Iterator[bytes]):
         return cls({constructor_args})
 
 """
 
 VISITOR_CLASS_TEMPLATE = """
-class GeneratedVisitor(ABC, Generic[T]):
+class _GeneratedVisitor(ABC, Generic[T]):
 {visitor_methods}
 
 """

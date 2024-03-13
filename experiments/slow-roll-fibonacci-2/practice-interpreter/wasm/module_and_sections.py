@@ -3,13 +3,13 @@ from itertools import islice
 from typing import Iterator, Callable, List, Mapping, Optional, Tuple
 
 from .utils import (
-    parse_signed,
-    parse_string,
-    parse_unsigned,
-    parse_valtype,
-    parse_vector,
+    decode_signed,
+    decode_string,
+    decode_unsigned,
+    decode_valtype,
+    decode_vector,
 )
-from .instructions import Instruction, parse_instruction_list
+from .instructions import Instruction, decode_instruction_list
 from .indices import (
     type_idx,
     func_idx,
@@ -33,8 +33,8 @@ class GlobalType:
     mut: str
 
     @classmethod
-    def parse(cls, stream: Iterator[bytes]):
-        valtype = parse_valtype(stream)
+    def decode(cls, stream: Iterator[bytes]):
+        valtype = decode_valtype(stream)
         b = next(stream)
         if b == 0x00:
             return cls(valtype, "const")
@@ -53,8 +53,8 @@ class Expression:
     instructions: List[Instruction]
 
     @classmethod
-    def parse(cls, stream: Iterator[bytes]):
-        return cls(parse_instruction_list(stream))
+    def decode(cls, stream: Iterator[bytes]):
+        return cls(decode_instruction_list(stream))
 
 
 @dataclass
@@ -67,8 +67,8 @@ class Global:
     expr: Expression
 
     @classmethod
-    def parse(cls, stream: Iterator[bytes]) -> "Global":
-        return cls(GlobalType.parse(stream), Expression.parse(stream))
+    def decode(cls, stream: Iterator[bytes]) -> "Global":
+        return cls(GlobalType.decode(stream), Expression.decode(stream))
 
 
 @dataclass
@@ -81,12 +81,12 @@ class MemType:
     max: Optional[int]
 
     @classmethod
-    def parse(cls, stream: Iterator[bytes]) -> "MemType":
+    def decode(cls, stream: Iterator[bytes]) -> "MemType":
         b = next(stream)
         if b == 0x00:
-            return MemType(min=parse_unsigned(stream), max=None)
+            return MemType(min=decode_unsigned(stream), max=None)
         elif b == 0x01:
-            return MemType(min=parse_unsigned(stream), max=parse_unsigned(stream))
+            return MemType(min=decode_unsigned(stream), max=decode_unsigned(stream))
 
 
 @dataclass
@@ -99,12 +99,12 @@ class FuncType:
     result_types: List[str]
 
     @classmethod
-    def parse(cls, stream: Iterator[bytes]) -> "FuncType":
+    def decode(cls, stream: Iterator[bytes]) -> "FuncType":
         magic = bytes(islice(stream, 1))
         if magic != b"\x60":
             raise ValueError("Expected the byte 0x60 in functype")
-        param_types = parse_vector(stream, parse_valtype)
-        result_types = parse_vector(stream, parse_valtype)
+        param_types = decode_vector(stream, decode_valtype)
+        result_types = decode_vector(stream, decode_valtype)
         return cls(param_types, result_types)
 
 
@@ -115,16 +115,16 @@ class Export:
     """
 
     @classmethod
-    def parse(cls, stream: Iterator[bytes]) -> "Export":
+    def decode(cls, stream: Iterator[bytes]) -> "Export":
         export_id_to_section: Mapping[int, Export] = {
             0: ExportFunction,
             1: ExportTable,
             2: ExportMemory,
             3: ExportGlobal,
         }
-        name = parse_string(stream)
+        name = decode_string(stream)
         id = next(stream)
-        return export_id_to_section[id].parse(name, stream)
+        return export_id_to_section[id].decode(name, stream)
 
 
 @dataclass
@@ -133,8 +133,8 @@ class ExportFunction(Export):
     ref: func_idx
 
     @classmethod
-    def parse(cls, name: str, stream: Iterator[bytes]) -> "ExportFunction":
-        return cls(name, parse_signed(stream))
+    def decode(cls, name: str, stream: Iterator[bytes]) -> "ExportFunction":
+        return cls(name, decode_signed(stream))
 
 
 @dataclass
@@ -143,8 +143,8 @@ class ExportTable(Export):
     ref: table_idx
 
     @classmethod
-    def parse(cls, name: str, stream: Iterator[bytes]) -> "ExportTable":
-        return cls(name, parse_signed(stream))
+    def decode(cls, name: str, stream: Iterator[bytes]) -> "ExportTable":
+        return cls(name, decode_signed(stream))
 
 
 @dataclass
@@ -153,8 +153,8 @@ class ExportMemory(Export):
     ref: mem_idx
 
     @classmethod
-    def parse(cls, name: str, stream: Iterator[bytes]) -> "ExportMemory":
-        return cls(name, parse_signed(stream))
+    def decode(cls, name: str, stream: Iterator[bytes]) -> "ExportMemory":
+        return cls(name, decode_signed(stream))
 
 
 @dataclass
@@ -163,8 +163,8 @@ class ExportGlobal(Export):
     ref: global_idx
 
     @classmethod
-    def parse(cls, name: str, stream: Iterator[bytes]) -> "ExportGlobal":
-        return cls(name, parse_signed(stream))
+    def decode(cls, name: str, stream: Iterator[bytes]) -> "ExportGlobal":
+        return cls(name, decode_signed(stream))
 
 
 @dataclass
@@ -177,8 +177,8 @@ class Local:
     valtype: str
 
     @classmethod
-    def parse(cls, stream: Iterator[bytes]) -> "ExportSection":
-        return cls(parse_signed(stream), parse_valtype(stream))
+    def decode(cls, stream: Iterator[bytes]) -> "ExportSection":
+        return cls(decode_signed(stream), decode_valtype(stream))
 
 
 @dataclass
@@ -191,9 +191,9 @@ class Code:
     expr: Expression
 
     @classmethod
-    def parse(cls, stream: Iterator[bytes]) -> "ExportSection":
+    def decode(cls, stream: Iterator[bytes]) -> "ExportSection":
         size = next(stream)
-        return cls(parse_vector(stream, Local.parse), Expression.parse(stream))
+        return cls(decode_vector(stream, Local.decode), Expression.decode(stream))
 
 
 @dataclass
@@ -216,7 +216,7 @@ class Module:
     code_sec: List[Code] = field(default_factory=list)
 
     @classmethod
-    def parse(cls, stream: Iterator[bytes]):
+    def decode(cls, stream: Iterator[bytes]):
         header = bytes(islice(stream, 4))
         if header != b"\x00asm":
             raise ValueError("Expected .wasm")
@@ -227,31 +227,27 @@ class Module:
         sec_id_to_name_and_parsing_func: Mapping[
             int, Tuple[str, Callable[[Iterator[bytes]], any]]
         ] = {
-            1: ("type_sec", FuncType.parse),
-            3: ("func_sec", parse_unsigned),
-            5: ("mem_sec", MemType.parse),
-            6: ("global_sec", Global.parse),
-            7: ("export_sec", Export.parse),
-            10: ("code_sec", Code.parse),
+            1: ("type_sec", FuncType.decode),
+            3: ("func_sec", decode_unsigned),
+            5: ("mem_sec", MemType.decode),
+            6: ("global_sec", Global.decode),
+            7: ("export_sec", Export.decode),
+            10: ("code_sec", Code.decode),
         }
 
         sections = {}
         while True:
             try:
                 sec_id = next(stream)
-                size = parse_unsigned(stream)
+                size = decode_unsigned(stream)
                 # just skip custom sections for now
                 if sec_id == 0:
                     stream = islice(stream, size, None)
                     continue
 
-                sec_name, parse_func = sec_id_to_name_and_parsing_func[sec_id]
+                sec_name, decode_func = sec_id_to_name_and_parsing_func[sec_id]
 
-                sections[sec_name] = parse_vector(stream, parse_func)
+                sections[sec_name] = decode_vector(stream, decode_func)
             except StopIteration:
                 break
         return cls(**sections)
-
-
-def parse_module(stream: Iterator[bytes]) -> Module:
-    return Module.parse(stream)

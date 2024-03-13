@@ -1,7 +1,7 @@
 import argparse
 import pprint
 
-from decode import parse_module
+import wasm
 
 
 if __name__ == "__main__":
@@ -13,6 +13,6 @@ if __name__ == "__main__":
 
     with open(args.file, "rb") as file:
         stream = iter(bytes(file.read()))
-        module = parse_module(stream)
+        module = wasm.decode(stream)
 
         pprint.pprint(module)
