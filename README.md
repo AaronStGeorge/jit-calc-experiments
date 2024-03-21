@@ -12,6 +12,11 @@ $ brew install llvm
 $ export PATH="/opt/homebrew/opt/llvm/bin:$PATH"
 ```
 
+
+
+```
+export PYTHONPATH=$(cd build && pwd)/python_packages/standalone
+```
 -->
 
 ## Building
@@ -48,8 +53,8 @@ ninja
 ```
 ### Building `jit-calc-experiments`
 
-Building `jit-calc-experiments` requires flags to set the path to the `LLVM` build, and the path to the `lit` tool (built during `LLVM` build). 
-This setup assumes that you have built `LLVM` (with MLIR enabled) in `$BUILD_DIR`. 
+Building `jit-calc-experiments` requires flags to set the path to the `LLVM` build, and the path to the `lit` tool (built during `LLVM` build).
+This setup assumes that you have built `LLVM` (with MLIR enabled) in `$BUILD_DIR`.
 To build run
 ```sh
 mkdir build && cd build
