@@ -7,7 +7,7 @@ target_link_libraries(srf2-opt PRIVATE
   ${dialect_libs}
   ${conversion_libs}
   MLIROptLib
-  MLIRStandalone
+  MLIRWasm
   )
 
 mlir_check_all_link_libraries(srf2-opt)
