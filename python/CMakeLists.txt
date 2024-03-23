@@ -10,19 +10,19 @@ add_compile_definitions("MLIR_PYTHON_PACKAGE_PREFIX=mlir_standalone.")
 # Sources
 ################################################################################
 
-declare_mlir_python_sources(StandalonePythonSources)
+declare_mlir_python_sources(MLIRWasmPythonSources)
 
 declare_mlir_dialect_python_bindings(
-  ADD_TO_PARENT StandalonePythonSources
+  ADD_TO_PARENT MLIRWasmPythonSources
   ROOT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/mlir_standalone"
   TD_FILE dialects/StandaloneOps.td
   SOURCES
     dialects/standalone.py
   DIALECT_NAME standalone)
 
-declare_mlir_python_extension(StandalonePythonSources.Extension
+declare_mlir_python_extension(MLIRWasmPythonSources.Extension
   MODULE_NAME _standaloneDialects
-  ADD_TO_PARENT StandalonePythonSources
+  ADD_TO_PARENT MLIRWasmPythonSources
   SOURCES
     StandaloneExtension.cpp
   EMBED_CAPI_LINK_LIBS
@@ -33,13 +33,13 @@ declare_mlir_python_extension(StandalonePythonSources.Extension
 # Common CAPI
 ################################################################################
 
-add_mlir_python_common_capi_library(StandalonePythonCAPI
-  INSTALL_COMPONENT StandalonePythonModules
+add_mlir_python_common_capi_library(MLIRWasmPythonCAPI
+  INSTALL_COMPONENT MLIRWasmPythonModules
   INSTALL_DESTINATION python_packages/standalone/mlir_standalone/_mlir_libs
   OUTPUT_DIRECTORY "${MLIR_BINARY_DIR}/python_packages/standalone/mlir_standalone/_mlir_libs"
   RELATIVE_INSTALL_ROOT "../../../.."
   DECLARED_SOURCES
-    StandalonePythonSources
+    MLIRWasmPythonSources
     # TODO: Remove this in favor of showing fine grained registration once
     # available.
     MLIRPythonExtension.RegisterEverything
@@ -50,15 +50,15 @@ add_mlir_python_common_capi_library(StandalonePythonCAPI
 # Instantiation of all Python modules
 ################################################################################
 
-add_mlir_python_modules(StandalonePythonModules
+add_mlir_python_modules(MLIRWasmPythonModules
   ROOT_PREFIX "${MLIR_BINARY_DIR}/python_packages/standalone/mlir_standalone"
   INSTALL_PREFIX "python_packages/standalone/mlir_standalone"
   DECLARED_SOURCES
-    StandalonePythonSources
+    MLIRWasmPythonSources
     # TODO: Remove this in favor of showing fine grained registration once
     # available.
     MLIRPythonExtension.RegisterEverything
     MLIRPythonSources
   COMMON_CAPI_LINK_LIBS
-    StandalonePythonCAPI
+    MLIRWasmPythonCAPI
   )
