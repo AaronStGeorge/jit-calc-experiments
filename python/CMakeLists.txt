@@ -21,10 +21,10 @@ declare_mlir_dialect_python_bindings(
   DIALECT_NAME standalone)
 
 declare_mlir_python_extension(MLIRWasmPythonSources.Extension
-  MODULE_NAME _standaloneDialects
+  MODULE_NAME _mlirWasmDialect
   ADD_TO_PARENT MLIRWasmPythonSources
   SOURCES
-    StandaloneExtension.cpp
+    MLIRWasmExtension.cpp
   EMBED_CAPI_LINK_LIBS
     MLIRWasmCAPI
 )
