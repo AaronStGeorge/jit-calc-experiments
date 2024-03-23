@@ -26,7 +26,7 @@ declare_mlir_python_extension(StandalonePythonSources.Extension
   SOURCES
     StandaloneExtension.cpp
   EMBED_CAPI_LINK_LIBS
-    StandaloneCAPI
+    MLIRWasmCAPI
 )
 
 ################################################################################
