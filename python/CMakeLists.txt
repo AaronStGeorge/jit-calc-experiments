@@ -10,36 +10,36 @@ add_compile_definitions("MLIR_PYTHON_PACKAGE_PREFIX=mlir_wasm.")
 # Sources
 ################################################################################
 
-declare_mlir_python_sources(MLIRWasmPythonSources)
+declare_mlir_python_sources(WasmPythonSources)
 
 declare_mlir_dialect_python_bindings(
-  ADD_TO_PARENT MLIRWasmPythonSources
+  ADD_TO_PARENT WasmPythonSources
   ROOT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/jit_calc"
-  TD_FILE dialects/StandaloneOps.td
+  TD_FILE dialects/WasmOps.td
   SOURCES
-    dialects/standalone.py
-  DIALECT_NAME standalone)
+    dialects/wasm.py
+  DIALECT_NAME wasm)
 
-declare_mlir_python_extension(MLIRWasmPythonSources.Extension
-  MODULE_NAME _mlirWasmDialect
-  ADD_TO_PARENT MLIRWasmPythonSources
+declare_mlir_python_extension(WasmPythonSources.Extension
+  MODULE_NAME _wasmDialect
+  ADD_TO_PARENT WasmPythonSources
   SOURCES
-    MLIRWasmExtension.cpp
+    WasmExtension.cpp
   EMBED_CAPI_LINK_LIBS
-    MLIRWasmCAPI
+    WasmCAPI
 )
 
 ################################################################################
 # Common CAPI
 ################################################################################
 
-add_mlir_python_common_capi_library(MLIRWasmPythonCAPI
-  INSTALL_COMPONENT MLIRWasmPythonModules
+add_mlir_python_common_capi_library(WasmPythonCAPI
+  INSTALL_COMPONENT WasmPythonModules
   INSTALL_DESTINATION python_packages/jit_calc/mlir_wasm/_mlir_libs
   OUTPUT_DIRECTORY "${MLIR_BINARY_DIR}/python_packages/jit_calc/mlir_wasm/_mlir_libs"
   RELATIVE_INSTALL_ROOT "../../../.."
   DECLARED_SOURCES
-    MLIRWasmPythonSources
+    WasmPythonSources
     # TODO: Remove this in favor of showing fine grained registration once
     # available.
     MLIRPythonExtension.RegisterEverything
@@ -50,15 +50,15 @@ add_mlir_python_common_capi_library(MLIRWasmPythonCAPI
 # Instantiation of all Python modules
 ################################################################################
 
-add_mlir_python_modules(MLIRWasmPythonModules
+add_mlir_python_modules(WasmPythonModules
   ROOT_PREFIX "${MLIR_BINARY_DIR}/python_packages/jit_calc/mlir_wasm"
   INSTALL_PREFIX "python_packages/jit_calc/mlir_wasm"
   DECLARED_SOURCES
-    MLIRWasmPythonSources
+    WasmPythonSources
     # TODO: Remove this in favor of showing fine grained registration once
     # available.
     MLIRPythonExtension.RegisterEverything
     MLIRPythonSources
   COMMON_CAPI_LINK_LIBS
-    MLIRWasmPythonCAPI
+    WasmPythonCAPI
   )

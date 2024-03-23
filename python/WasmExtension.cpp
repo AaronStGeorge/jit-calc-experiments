@@ -11,13 +11,13 @@
 
 using namespace mlir::python::adaptors;
 
-PYBIND11_MODULE(_mlirWasmDialect, m) {
+PYBIND11_MODULE(_wasmDialect, m) {
   //===--------------------------------------------------------------------===//
   // standalone dialect
   //===--------------------------------------------------------------------===//
-  auto mlirWasmM = m.def_submodule("mlir_wasm");
+  auto wasmM = m.def_submodule("mlir_wasm");
 
-  mlirWasmM.def(
+  wasmM.def(
       "register_dialect",
       [](MlirContext context, bool load) {
         MlirDialectHandle handle = mlirGetDialectHandle__standalone__();

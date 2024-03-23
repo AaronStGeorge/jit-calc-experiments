@@ -1,4 +1,4 @@
-add_mlir_dialect_library(MLIRWasm
+add_mlir_dialect_library(Wasm
         StandaloneTypes.cpp
         StandaloneDialect.cpp
         StandaloneOps.cpp
