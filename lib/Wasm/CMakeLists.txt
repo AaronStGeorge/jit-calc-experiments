@@ -1,14 +1,14 @@
 add_mlir_dialect_library(Wasm
-        StandaloneDialect.cpp
-        StandaloneOps.cpp
-        StandalonePasses.cpp
+        WasmDialect.cpp
+        WasmOps.cpp
+        WasmPasses.cpp
 
         ADDITIONAL_HEADER_DIRS
-        ${PROJECT_SOURCE_DIR}/include/Standalone
+        ${PROJECT_SOURCE_DIR}/include/Wasm
 
         DEPENDS
         MLIRWasmOpsIncGen
-        MLIRStandalonePassesIncGen
+        MLIRWasmPassesIncGen
 
         LINK_LIBS PUBLIC
         MLIRIR

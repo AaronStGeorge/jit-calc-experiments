@@ -6,8 +6,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef STANDALONE_C_DIALECTS_H
-#define STANDALONE_C_DIALECTS_H
+#ifndef WASM_C_DIALECTS_H
+#define WASM_C_DIALECTS_H
 
 #include "mlir-c/IR.h"
 
@@ -21,4 +21,4 @@ MLIR_DECLARE_CAPI_DIALECT_REGISTRATION(Wasm, wasm);
 }
 #endif
 
-#endif // STANDALONE_C_DIALECTS_H
+#endif // WASM_C_DIALECTS_H

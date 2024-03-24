@@ -1,18 +1,10 @@
-//===- StandaloneDialect.td - Standalone dialect -----------*- tablegen -*-===//
-//
-// This file is licensed under the Apache License v2.0 with LLVM Exceptions.
-// See https://llvm.org/LICENSE.txt for license information.
-// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
-//
-//===----------------------------------------------------------------------===//
-
-#ifndef STANDALONE_DIALECT
-#define STANDALONE_DIALECT
+#ifndef WASM_DIALECT
+#define WASM_DIALECT
 
 include "mlir/IR/OpBase.td"
 
 //===----------------------------------------------------------------------===//
-// Standalone dialect definition.
+// Wasm dialect definition.
 //===----------------------------------------------------------------------===//
 
 def Wasm_Dialect : Dialect {
@@ -25,10 +17,10 @@ def Wasm_Dialect : Dialect {
 }
 
 //===----------------------------------------------------------------------===//
-// Base standalone operation definition.
+// Base Wasm operation definition.
 //===----------------------------------------------------------------------===//
 
 class Wasm_Op<string mnemonic, list<Trait> traits = []> :
         Op<Wasm_Dialect, mnemonic, traits>;
 
-#endif // STANDALONE_DIALECT
+#endif // WASM_DIALECT
