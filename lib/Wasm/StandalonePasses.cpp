@@ -13,7 +13,7 @@
 
 #include "Wasm/StandalonePasses.h"
 
-namespace mlir::standalone {
+namespace mlir::wasm {
 #define GEN_PASS_DEF_STANDALONESWITCHBARFOO
 #include "Wasm/StandalonePasses.h.inc"
 

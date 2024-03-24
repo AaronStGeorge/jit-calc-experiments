@@ -18,7 +18,7 @@ int main(int argc, char **argv) {
   mlir::registerAllPasses();
 
   mlir::DialectRegistry registry;
-  registry.insert<mlir::standalone::StandaloneDialect>();
+  registry.insert<mlir::wasm::WasmDialect>();
   registerAllDialects(registry);
 
   return mlir::asMainReturnCode(

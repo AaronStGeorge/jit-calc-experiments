@@ -6,30 +6,16 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef STANDALONE_OPS
-#define STANDALONE_OPS
+#ifndef WASM_OPS
+#define WASM_OPS
 
-include "Wasm/StandaloneTypes.td"
+include "Wasm/StandaloneDialect.td"
 include "mlir/Interfaces/InferTypeOpInterface.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
 
-def Standalone_FooOp : Standalone_Op<"foo", [Pure,
-                                             SameOperandsAndResultType]> {
-    let summary = "Illustrates how to define an operation.";
+def Wasm_FooOp : Wasm_Op<"foo", [Pure, SameOperandsAndResultType]> {
     let description = [{
-        The `standalone.foo` operation illustrates how to define a new
-        operation in a dialect. It uses an operation trait to declare that it
-        has no side effects.
-
-        This operation takes an integer argument and returns an integer.
-
-        Example:
-
-        ```mlir
-        %0 = arith.constant 2 : i32
-        // Apply the foo operation to %0
-        %1 = standalone.foo %0 : i32
-        ```
+        TODO
     }];
 
     let arguments = (ins I32:$input);
@@ -40,4 +26,4 @@ def Standalone_FooOp : Standalone_Op<"foo", [Pure,
     }];
 }
 
-#endif // STANDALONE_OPS
+#endif // WASM_OPS

@@ -12,4 +12,4 @@
 #include "mlir/CAPI/Registration.h"
 
 MLIR_DEFINE_CAPI_DIALECT_REGISTRATION(Wasm, wasm,
-                                      mlir::standalone::StandaloneDialect)
+                                      mlir::wasm::WasmDialect)

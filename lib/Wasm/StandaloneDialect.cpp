@@ -8,10 +8,9 @@
 
 #include "Wasm/StandaloneDialect.h"
 #include "Wasm/StandaloneOps.h"
-#include "Wasm/StandaloneTypes.h"
 
 using namespace mlir;
-using namespace mlir::standalone;
+using namespace mlir::wasm;
 
 #include "Wasm/StandaloneOpsDialect.cpp.inc"
 
@@ -19,10 +18,9 @@ using namespace mlir::standalone;
 // Standalone dialect.
 //===----------------------------------------------------------------------===//
 
-void StandaloneDialect::initialize() {
+void WasmDialect::initialize() {
   addOperations<
 #define GET_OP_LIST
 #include "Wasm/StandaloneOps.cpp.inc"
       >();
-  registerTypes();
 }

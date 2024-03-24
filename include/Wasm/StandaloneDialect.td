@@ -15,27 +15,20 @@ include "mlir/IR/OpBase.td"
 // Standalone dialect definition.
 //===----------------------------------------------------------------------===//
 
-def Standalone_Dialect : Dialect {
-    let name = "standalone";
-    let summary = "A standalone out-of-tree MLIR dialect.";
+def Wasm_Dialect : Dialect {
+    let name = "wasm";
+    let summary = "An MLIR representation for web assembly";
     let description = [{
-        This dialect is an example of an out-of-tree MLIR dialect designed to
-        illustrate the basic setup required to develop MLIR-based tools without
-        working inside of the LLVM source tree.
+        TODO
     }];
-    let cppNamespace = "::mlir::standalone";
-
-    let useDefaultTypePrinterParser = 1;
-    let extraClassDeclaration = [{
-        void registerTypes();
-    }];
+    let cppNamespace = "::mlir::wasm";
 }
 
 //===----------------------------------------------------------------------===//
 // Base standalone operation definition.
 //===----------------------------------------------------------------------===//
 
-class Standalone_Op<string mnemonic, list<Trait> traits = []> :
-        Op<Standalone_Dialect, mnemonic, traits>;
+class Wasm_Op<string mnemonic, list<Trait> traits = []> :
+        Op<Wasm_Dialect, mnemonic, traits>;
 
 #endif // STANDALONE_DIALECT

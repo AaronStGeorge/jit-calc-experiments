@@ -27,7 +27,7 @@ with Context():
     module = Module.parse(
         """
     %0 = arith.constant 2 : i32
-    %1 = standalone.foo %0 : i32
+    %1 = wasm.foo %0 : i32
     """
     )
     # CHECK: %[[C:.*]] = arith.constant 2 : i32
