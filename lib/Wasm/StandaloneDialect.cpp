@@ -6,8 +6,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "Wasm/StandaloneDialect.h"
-#include "Wasm/StandaloneOps.h"
+#include "Wasm/WasmDialect.h"
+#include "Wasm/WasmOps.h"
 
 using namespace mlir;
 using namespace mlir::wasm;

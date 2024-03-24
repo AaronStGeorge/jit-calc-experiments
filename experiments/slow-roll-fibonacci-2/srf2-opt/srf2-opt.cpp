@@ -12,7 +12,7 @@
 #include "llvm/Support/SourceMgr.h"
 #include "llvm/Support/ToolOutputFile.h"
 
-#include "Wasm/StandaloneDialect.h"
+#include "Wasm/WasmDialect.h"
 
 int main(int argc, char **argv) {
   mlir::registerAllPasses();

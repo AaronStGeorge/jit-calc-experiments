@@ -8,7 +8,7 @@
 
 #include "Wasm-c/Dialects.h"
 
-#include "Wasm/StandaloneDialect.h"
+#include "Wasm/WasmDialect.h"
 #include "mlir/CAPI/Registration.h"
 
 MLIR_DEFINE_CAPI_DIALECT_REGISTRATION(Wasm, wasm,

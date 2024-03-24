@@ -8,8 +8,8 @@
 #ifndef STANDALONE_STANDALONEPASSES_H
 #define STANDALONE_STANDALONEPASSES_H
 
-#include "Wasm/StandaloneDialect.h"
-#include "Wasm/StandaloneOps.h"
+#include "Wasm/WasmDialect.h"
+#include "Wasm/WasmOps.h"
 #include "mlir/Pass/Pass.h"
 #include <memory>
 

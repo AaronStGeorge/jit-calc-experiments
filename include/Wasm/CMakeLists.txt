@@ -1,6 +1,4 @@
 add_mlir_dialect(WasmOps wasm)
-# add_mlir_doc(StandaloneDialect StandaloneDialect Standalone/ -gen-dialect-doc)
-# add_mlir_doc(StandaloneOps StandaloneOps Standalone/ -gen-op-doc)
 
 set(LLVM_TARGET_DEFINITIONS StandalonePasses.td)
 mlir_tablegen(StandalonePasses.h.inc --gen-pass-decls)
