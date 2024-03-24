@@ -6,7 +6,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "Standalone-c/Dialects.h"
+#include "Wasm-c/Dialects.h"
 #include "mlir/Bindings/Python/PybindAdaptors.h"
 
 using namespace mlir::python::adaptors;
@@ -20,7 +20,7 @@ PYBIND11_MODULE(_wasmDialect, m) {
   wasmM.def(
       "register_dialect",
       [](MlirContext context, bool load) {
-        MlirDialectHandle handle = mlirGetDialectHandle__standalone__();
+        MlirDialectHandle handle = mlirGetDialectHandle__wasm__();
         mlirDialectHandleRegisterDialect(handle, context);
         if (load) {
           mlirDialectHandleLoadDialect(handle, context);

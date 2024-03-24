@@ -1,3 +1,3 @@
 add_subdirectory(CAPI)
 # add_subdirectory(HomeRolledCoroutines)
-add_subdirectory(Standalone)
+add_subdirectory(Wasm)

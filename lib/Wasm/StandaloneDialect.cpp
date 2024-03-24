@@ -6,14 +6,14 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "Standalone/StandaloneDialect.h"
-#include "Standalone/StandaloneOps.h"
-#include "Standalone/StandaloneTypes.h"
+#include "Wasm/StandaloneDialect.h"
+#include "Wasm/StandaloneOps.h"
+#include "Wasm/StandaloneTypes.h"
 
 using namespace mlir;
 using namespace mlir::standalone;
 
-#include "Standalone/StandaloneOpsDialect.cpp.inc"
+#include "Wasm/StandaloneOpsDialect.cpp.inc"
 
 //===----------------------------------------------------------------------===//
 // Standalone dialect.
@@ -22,7 +22,7 @@ using namespace mlir::standalone;
 void StandaloneDialect::initialize() {
   addOperations<
 #define GET_OP_LIST
-#include "Standalone/StandaloneOps.cpp.inc"
+#include "Wasm/StandaloneOps.cpp.inc"
       >();
   registerTypes();
 }

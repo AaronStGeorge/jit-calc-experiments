@@ -6,10 +6,10 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "Standalone-c/Dialects.h"
+#include "Wasm-c/Dialects.h"
 
-#include "Standalone/StandaloneDialect.h"
+#include "Wasm/StandaloneDialect.h"
 #include "mlir/CAPI/Registration.h"
 
-MLIR_DEFINE_CAPI_DIALECT_REGISTRATION(Standalone, standalone,
+MLIR_DEFINE_CAPI_DIALECT_REGISTRATION(Wasm, wasm,
                                       mlir::standalone::StandaloneDialect)
