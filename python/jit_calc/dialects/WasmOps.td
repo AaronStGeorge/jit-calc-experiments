@@ -9,6 +9,6 @@
 #ifndef PYTHON_BINDINGS_STANDALONE_OPS
 #define PYTHON_BINDINGS_STANDALONE_OPS
 
-include "Wasm/StandaloneOps.td"
+include "Wasm/WasmOps.td"
 
 #endif

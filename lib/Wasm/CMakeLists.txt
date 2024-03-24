@@ -7,7 +7,7 @@ add_mlir_dialect_library(Wasm
         ${PROJECT_SOURCE_DIR}/include/Standalone
 
         DEPENDS
-        MLIRStandaloneOpsIncGen
+        MLIRWasmOpsIncGen
         MLIRStandalonePassesIncGen
 
         LINK_LIBS PUBLIC

@@ -10,4 +10,4 @@
 #include "Wasm/StandaloneDialect.h"
 
 #define GET_OP_CLASSES
-#include "Wasm/StandaloneOps.cpp.inc"
+#include "Wasm/WasmOps.cpp.inc"

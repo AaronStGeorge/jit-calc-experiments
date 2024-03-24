@@ -16,6 +16,6 @@
 #include "mlir/Interfaces/SideEffectInterfaces.h"
 
 #define GET_OP_CLASSES
-#include "Wasm/StandaloneOps.h.inc"
+#include "Wasm/WasmOps.h.inc"
 
 #endif // STANDALONE_STANDALONEOPS_H

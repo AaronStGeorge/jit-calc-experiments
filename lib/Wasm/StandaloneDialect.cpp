@@ -12,7 +12,7 @@
 using namespace mlir;
 using namespace mlir::wasm;
 
-#include "Wasm/StandaloneOpsDialect.cpp.inc"
+#include "Wasm/WasmOpsDialect.cpp.inc"
 
 //===----------------------------------------------------------------------===//
 // Standalone dialect.
@@ -21,6 +21,6 @@ using namespace mlir::wasm;
 void WasmDialect::initialize() {
   addOperations<
 #define GET_OP_LIST
-#include "Wasm/StandaloneOps.cpp.inc"
+#include "Wasm/WasmOps.cpp.inc"
       >();
 }
