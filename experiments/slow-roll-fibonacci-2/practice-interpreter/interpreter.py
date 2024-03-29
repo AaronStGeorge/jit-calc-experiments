@@ -232,8 +232,8 @@ if __name__ == "__main__":
 
         # pull functions from module
         functions = []
-        for type_idx, code in zip(module.func_sec, module.code_sec):
-            func_type = module.type_sec[type_idx]
+        for idx, code in zip(module.func_sec, module.code_sec):
+            func_type = module.type_sec[idx]
             functions.append(
                 Function(
                     nparams=len(func_type.param_types),

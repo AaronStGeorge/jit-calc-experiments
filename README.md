@@ -15,7 +15,7 @@ $ export PATH="/opt/homebrew/opt/llvm/bin:$PATH"
 
 
 ```
-export PYTHONPATH=$(cd build && pwd)/python_packages/standalone
+export PYTHONPATH=$(cd build && pwd)/python_packages/jit_calc
 ```
 -->
 

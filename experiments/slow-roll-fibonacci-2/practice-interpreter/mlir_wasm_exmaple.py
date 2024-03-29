@@ -6,8 +6,7 @@ with Context():
     module = Module.parse(
         """
     %0 = arith.constant 2 : i32
-    %1 = wasm.foo %0 : i32
+    %1 = wasm.local.get %0 : i32
     """
     )
     print(str(module))
-
