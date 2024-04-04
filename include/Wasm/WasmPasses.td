@@ -3,20 +3,12 @@
 
 include "mlir/Pass/PassBase.td"
 
-def SwitchBarFoo: Pass<"switch-bar-foo", "::mlir::ModuleOp"> {
-  let summary = "Switches the name of a FuncOp named `bar` to `foo` and folds.";
+def LowerWasm: Pass<"lower-wasm", "::mlir::ModuleOp"> {
+  let summary = "TODO";
   let description = [{
-    Switches the name of a FuncOp named `bar` to `foo` and folds.
-    ```
-    func.func @bar() {
-      return
-    }
-    // Gets transformed to:
-    func.func @foo() {
-      return
-    }
-    ```
+    TODO
   }];
+  let dependentDialects = ["arith::ArithDialect"];
 }
 
 #endif // WASM_PASS

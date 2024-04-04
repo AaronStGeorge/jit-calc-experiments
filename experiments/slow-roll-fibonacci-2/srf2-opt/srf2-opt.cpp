@@ -13,9 +13,11 @@
 #include "llvm/Support/ToolOutputFile.h"
 
 #include "Wasm/WasmDialect.h"
+#include "Wasm/WasmPasses.h"
 
 int main(int argc, char **argv) {
   mlir::registerAllPasses();
+  mlir::wasm::registerLowerWasm();
 
   mlir::DialectRegistry registry;
   registry.insert<mlir::wasm::WasmDialect>();

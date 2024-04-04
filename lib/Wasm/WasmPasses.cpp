@@ -3,11 +3,12 @@
 #include "mlir/Rewrite/FrozenRewritePatternSet.h"
 #include "mlir/Support/LogicalResult.h"
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
+#include "mlir/Dialect/Arith/IR/Arith.h"
 
 #include "Wasm/WasmPasses.h"
 
 namespace mlir::wasm {
-#define GEN_PASS_DEF_SWITCHBARFOO
+#define GEN_PASS_DEF_LOWERWASM
 #include "Wasm/WasmPasses.h.inc"
 
 namespace {
@@ -25,10 +26,10 @@ public:
 };
 
 class SwitchBarFoo
-    : public impl::SwitchBarFooBase<SwitchBarFoo> {
+    : public impl::LowerWasmBase<SwitchBarFoo> {
 public:
-  using impl::SwitchBarFooBase<
-      SwitchBarFoo>::SwitchBarFooBase;
+  using impl::LowerWasmBase<
+      SwitchBarFoo>::LowerWasmBase;
   void runOnOperation() final {
     RewritePatternSet patterns(&getContext());
     patterns.add<SwitchBarFooRewriter>(&getContext());
