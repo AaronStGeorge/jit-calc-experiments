@@ -21,4 +21,17 @@ def Wasm_LocalGetOp : Wasm_Op<"local.get", [Pure, SameOperandsAndResultType]> {
     }];
 }
 
+def Wasm_I32AddOp : Wasm_Op<"i32.add", [Pure, SameOperandsAndResultType]> {
+    let description = [{
+        TODO
+    }];
+
+    let arguments = (ins I32:$lhs, I32:$rhs);
+    let results = (outs I32:$res);
+
+    let assemblyFormat = [{
+        $lhs $rhs attr-dict `:` type($lhs)
+    }];
+}
+
 #endif // WASM_OPS
