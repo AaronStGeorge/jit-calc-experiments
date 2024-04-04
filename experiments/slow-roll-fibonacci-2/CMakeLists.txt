@@ -29,3 +29,4 @@
 # export_executable_symbols(slow-roll-fibonacci-2)
 
 add_subdirectory(srf2-opt)
+add_subdirectory(srf2-test-thing)

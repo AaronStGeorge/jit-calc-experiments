@@ -1,3 +1,4 @@
+#include "Wasm/WasmOps.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/IR/PatternMatch.h"
 #include "mlir/Rewrite/FrozenRewritePatternSet.h"
@@ -12,16 +13,25 @@ namespace mlir::wasm {
 #include "Wasm/WasmPasses.h.inc"
 
 namespace {
-class SwitchBarFooRewriter : public OpRewritePattern<func::FuncOp> {
+
+class AddOps : public OpRewritePattern<wasm::I32AddOp> {
 public:
-  using OpRewritePattern<func::FuncOp>::OpRewritePattern;
-  LogicalResult matchAndRewrite(func::FuncOp op,
+  using OpRewritePattern<wasm::I32AddOp>::OpRewritePattern;
+  LogicalResult matchAndRewrite(wasm::I32AddOp op,
                                 PatternRewriter &rewriter) const final {
-    if (op.getSymName() == "bar") {
-      rewriter.modifyOpInPlace(op, [&op]() { op.setSymName("foo"); });
-      return success();
-    }
-    return failure();
+    rewriter.replaceOpWithNewOp<arith::AddIOp>(op, op.getLhs(), op.getRhs());
+    return success();
+  }
+};
+
+// TODO: this should probably be a folder?
+class LocalGet : public OpRewritePattern<wasm::LocalGetOp> {
+public:
+  using OpRewritePattern<wasm::LocalGetOp>::OpRewritePattern;
+  LogicalResult matchAndRewrite(wasm::LocalGetOp op,
+                                PatternRewriter &rewriter) const final {
+    rewriter.replaceAllOpUsesWith(op, op.getInput());
+    return success();
   }
 };
 
@@ -32,7 +42,7 @@ public:
       SwitchBarFoo>::LowerWasmBase;
   void runOnOperation() final {
     RewritePatternSet patterns(&getContext());
-    patterns.add<SwitchBarFooRewriter>(&getContext());
+    patterns.add<AddOps, LocalGet>(&getContext());
     FrozenRewritePatternSet patternSet(std::move(patterns));
     if (failed(applyPatternsAndFoldGreedily(getOperation(), patternSet)))
       signalPassFailure();
