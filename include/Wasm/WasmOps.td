@@ -34,4 +34,12 @@ def Wasm_I32AddOp : Wasm_Op<"i32.add", [Pure, SameOperandsAndResultType]> {
     }];
 }
 
+
+def Wasm_BlockOp : Wasm_Op<"block", [NoTerminator]> {
+    let description = [{
+        TODO
+    }];
+    let regions = (region AnyRegion:$region);
+}
+
 #endif // WASM_OPS

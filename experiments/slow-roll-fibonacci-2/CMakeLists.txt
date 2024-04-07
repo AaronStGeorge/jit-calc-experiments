@@ -30,3 +30,4 @@
 
 add_subdirectory(srf2-opt)
 add_subdirectory(srf2-test-thing)
+add_subdirectory(srf2-lsp-server)
