@@ -41,10 +41,27 @@ multitasking.
 			very nice way to do this.
 - [ ] create a webassembly runtime using MLIR good enough to run fibonacci
 	- [x] write a webassembly interpreter for practice (also only that's good enough to do fibonacci).
-	- [ ] create an MLIR webassembly dialect.
-	- [ ] write a compiler?,assembler? that takes serialized wasm and generates MLIR webasembly dialect.
-	- [ ] write an MLIR pass on the webassembly dialect to insert instruction counts and swap calls when limit is reached.
-	- [ ] lower webassembly dialect to LLVM
+	- [ ] ~~create an MLIR webassembly dialect~~.
+		- a wasm dialect probably isn't necessary. We'll definitely need a "towervm"
+		dialect (or something) with instructions that indicate the places we should
+		increment instruction count, and places to check to see if it's time to swap
+		out. We *could* create a wasm dialect then insert the "towervm" instructions
+		between the wasm instructions before lowering the wasm dialect to "standard"
+		MLIR. *Or*, we could just generate the MLIR that the wasm dialect would
+		lower to + generate the "towervm" instructions between each "chunk" of
+		lowered MLIR. I think the latter is a little easier and relatively risk
+		free. We'll need to lower + insert "towervm" instructions in one step as we
+		won't have any way to back out the wasm provenance of MLIR instructions
+		after lowering. I don't love welding those steps together, but it shouldn't
+		be the hardest thing to break apart later should things get ugly.
+	- [ ] write a compiler?,assembler? that takes serialized wasm and generates
+	MLIR that can be compiled down to machine code and executed
+		- [x] for add.c
+		- [ ] for fib.c
+			- [ ] for simple_cond.c (simpler branching behavior + CFG)
+				- [ ] expand decoder to include import section so simple_cond.wasm can be decoded
+	- [ ] Insert instruction counts and swap calls when limit is reached.
+	- [ ] ~~lower webassembly dialect to LLVM~~
 
 
 ## What
