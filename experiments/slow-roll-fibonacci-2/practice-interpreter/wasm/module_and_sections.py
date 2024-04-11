@@ -1,3 +1,4 @@
+from abc import abstractmethod, ABC
 from dataclasses import dataclass, field
 from itertools import islice
 from typing import Iterator, Callable, List, Mapping, Optional, Tuple
@@ -90,6 +91,73 @@ class MemType:
 
 
 @dataclass
+class Import(ABC):
+    """
+    https://webassembly.github.io/spec/core/binary/modules.html#binary-importsec
+    """
+
+    @property
+    @abstractmethod
+    def name(self):
+        pass
+
+    @property
+    @abstractmethod
+    def module(self):
+        pass
+
+    @classmethod
+    def decode(cls, stream: Iterator[bytes]) -> "Import":
+        export_id_to_section: Mapping[int, Export] = {
+            0: ImportFunction,
+            # TODO: implement table
+            2: ImportMemory,
+        }
+        module = decode_string(stream)
+        name = decode_string(stream)
+        id = next(stream)
+        return export_id_to_section[id].decode(module, name, stream)
+
+
+@dataclass
+class ImportFunction(Import):
+    _module: str
+    _name: str
+    func: type_idx
+
+    @property
+    def name(self):
+        return self._name
+
+    @property
+    def module(self):
+        return self._module
+
+    @classmethod
+    def decode(cls, module: str, name: str, stream: Iterator[bytes]) -> "ExportFunction":
+        return cls(module, name, decode_signed(stream))
+
+
+@dataclass
+class ImportMemory(Import):
+    _module: str
+    _name: str
+    mem_type: MemType
+
+    @property
+    def name(self):
+        return self._name
+
+    @property
+    def module(self):
+        return self._module
+
+    @classmethod
+    def decode(cls, module: str, name: str, stream: Iterator[bytes]) -> "ExportFunction":
+        return cls(module, name, MemType.decode(stream))
+
+
+@dataclass
 class FuncType:
     """
     https://webassembly.github.io/spec/core/binary/types.html#function-types
@@ -108,11 +176,15 @@ class FuncType:
         return cls(param_types, result_types)
 
 
-@dataclass
-class Export:
+class Export(ABC):
     """
     https://webassembly.github.io/spec/core/binary/modules.html#binary-export
     """
+
+    @property
+    @abstractmethod
+    def name(self):
+        pass
 
     @classmethod
     def decode(cls, stream: Iterator[bytes]) -> "Export":
@@ -129,8 +201,12 @@ class Export:
 
 @dataclass
 class ExportFunction(Export):
-    name: str
+    _name: str
     ref: func_idx
+
+    @property
+    def name(self):
+        return self._name
 
     @classmethod
     def decode(cls, name: str, stream: Iterator[bytes]) -> "ExportFunction":
@@ -139,8 +215,12 @@ class ExportFunction(Export):
 
 @dataclass
 class ExportTable(Export):
-    name: str
+    _name: str
     ref: table_idx
+
+    @property
+    def name(self):
+        return self._name
 
     @classmethod
     def decode(cls, name: str, stream: Iterator[bytes]) -> "ExportTable":
@@ -149,8 +229,12 @@ class ExportTable(Export):
 
 @dataclass
 class ExportMemory(Export):
-    name: str
+    _name: str
     ref: mem_idx
+
+    @property
+    def name(self):
+        return self._name
 
     @classmethod
     def decode(cls, name: str, stream: Iterator[bytes]) -> "ExportMemory":
@@ -159,8 +243,12 @@ class ExportMemory(Export):
 
 @dataclass
 class ExportGlobal(Export):
-    name: str
+    _name: str
     ref: global_idx
+
+    @property
+    def name(self):
+        return self._name
 
     @classmethod
     def decode(cls, name: str, stream: Iterator[bytes]) -> "ExportGlobal":
@@ -204,6 +292,8 @@ class Module:
 
     # https://webassembly.github.io/spec/core/binary/modules.html#type-section
     type_sec: List[FuncType] = field(default_factory=list)
+    # https://webassembly.github.io/spec/core/binary/modules.html#binary-importsec
+    import_sec: List[Import] = field(default_factory=list)
     # https://webassembly.github.io/spec/core/binary/modules.html#function-section
     func_sec: List[type_idx] = field(default_factory=list)
     # https://webassembly.github.io/spec/core/binary/modules.html#memory-section
@@ -228,6 +318,7 @@ class Module:
             int, Tuple[str, Callable[[Iterator[bytes]], any]]
         ] = {
             1: ("type_sec", FuncType.decode),
+            2: ("import_sec", Import.decode),
             3: ("func_sec", decode_unsigned),
             5: ("mem_sec", MemType.decode),
             6: ("global_sec", Global.decode),

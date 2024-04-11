@@ -60,6 +60,8 @@ multitasking.
 		- [ ] for fib.c
 			- [ ] for simple_cond.c (simpler branching behavior + CFG)
 				- [ ] expand decoder to include import section so simple_cond.wasm can be decoded
+                  - [x] import section decode
+                  - [ ] instruction decode
 	- [ ] Insert instruction counts and swap calls when limit is reached.
 	- [ ] ~~lower webassembly dialect to LLVM~~
 

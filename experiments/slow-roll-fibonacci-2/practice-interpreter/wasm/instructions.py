@@ -108,9 +108,9 @@ class _ManualVisitor(ABC, Generic[T]):
 # Everything "GEN START" and "GEN STOP" is generated with hacky_codegen.py in
 # the scripts directory.
 #
-# This sucks, but python really wants all code for a module to be in the same
-# file so it just ends up being easier to dump generated code in this file vs
-# deal with circular imports for a separate one.
+# The GEN_START GEN_STOP thing sucks, but python really wants all code for a
+# module to be in the same file so it just ends up being easier to dump
+# generated code in this file vs deal with circular imports for a separate one.
 # =============================================================================
 
 ##GEN_START##
