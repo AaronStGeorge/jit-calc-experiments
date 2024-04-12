@@ -59,9 +59,12 @@ multitasking.
 		- [x] for add.c
 		- [ ] for fib.c
 			- [ ] for simple_cond.c (simpler branching behavior + CFG)
-				- [ ] expand decoder to include import section so simple_cond.wasm can be decoded
+				- [x] expand decoder to include import section so simple_cond.wasm can be decoded
                   - [x] import section decode
-                  - [ ] instruction decode
+                  - [x] instruction decode
+				- [ ] expand interpreter to include instructions needed for simple_cond.wasm
+                  - It's probably easiest to just create fake functions for the
+                  calls to imported functions in simple_cond.wasm
 	- [ ] Insert instruction counts and swap calls when limit is reached.
 	- [ ] ~~lower webassembly dialect to LLVM~~
 

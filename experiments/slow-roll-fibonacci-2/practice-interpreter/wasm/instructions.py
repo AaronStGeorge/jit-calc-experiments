@@ -43,7 +43,7 @@ class Instruction(ABC):
 
     @classmethod
     def decode(cls, op_code: int, stream: Iterator[bytes]):
-        op_code_to_class: Mapping[int, Instruction] = {
+        op_code_to_class: Dict[int, Instruction] = {
             **op_code_to_generated_class(),
             0x02: block,
             0x03: loop,
@@ -150,7 +150,7 @@ class br(Instruction):
 
     @classmethod
     def decode(cls, stream: Iterator[bytes]):
-        return cls((decode_signed(stream),))
+        return cls((decode_unsigned(stream),))
 
 
 @dataclass
@@ -163,7 +163,32 @@ class br_if(Instruction):
 
     @classmethod
     def decode(cls, stream: Iterator[bytes]):
-        return cls((decode_signed(stream),))
+        return cls((decode_unsigned(stream),))
+
+
+@dataclass
+class wasm_return(Instruction):
+    name: str = "wasm_return"
+
+    def accept(self, visitor: "Visitor[T]") -> T:
+        return visitor.visit_wasm_return(self)
+
+    @classmethod
+    def decode(cls, stream: Iterator[bytes]):
+        return cls()
+
+
+@dataclass
+class call(Instruction):
+    args: Tuple[func_idx]
+    name: str = "call"
+
+    def accept(self, visitor: "Visitor[T]") -> T:
+        return visitor.visit_call(self)
+
+    @classmethod
+    def decode(cls, stream: Iterator[bytes]):
+        return cls((decode_unsigned(stream),))
 
 
 @dataclass
@@ -176,7 +201,7 @@ class local_get(Instruction):
 
     @classmethod
     def decode(cls, stream: Iterator[bytes]):
-        return cls((decode_signed(stream),))
+        return cls((decode_unsigned(stream),))
 
 
 @dataclass
@@ -189,7 +214,7 @@ class local_set(Instruction):
 
     @classmethod
     def decode(cls, stream: Iterator[bytes]):
-        return cls((decode_signed(stream),))
+        return cls((decode_unsigned(stream),))
 
 
 @dataclass
@@ -202,7 +227,7 @@ class local_tee(Instruction):
 
     @classmethod
     def decode(cls, stream: Iterator[bytes]):
-        return cls((decode_signed(stream),))
+        return cls((decode_unsigned(stream),))
 
 
 @dataclass
@@ -216,6 +241,18 @@ class i32_const(Instruction):
     @classmethod
     def decode(cls, stream: Iterator[bytes]):
         return cls((decode_signed(stream),))
+
+
+@dataclass
+class i32_lt_s(Instruction):
+    name: str = "i32.lt_s"
+
+    def accept(self, visitor: "Visitor[T]") -> T:
+        return visitor.visit_i32_lt_s(self)
+
+    @classmethod
+    def decode(cls, stream: Iterator[bytes]):
+        return cls()
 
 
 @dataclass
@@ -248,10 +285,13 @@ def op_code_to_generated_class() -> Dict[int, Instruction]:
         0x1: nop,
         0xC: br,
         0xD: br_if,
+        0xF: wasm_return,
+        0x10: call,
         0x20: local_get,
         0x21: local_set,
         0x22: local_tee,
         0x41: i32_const,
+        0x48: i32_lt_s,
         0x4E: i32_ge_s,
         0x6A: i32_add,
     }
@@ -276,6 +316,14 @@ class _GeneratedVisitor(ABC, Generic[T]):
         pass
 
     @abstractmethod
+    def visit_wasm_return(self, instruction: wasm_return) -> T:
+        pass
+
+    @abstractmethod
+    def visit_call(self, instruction: call) -> T:
+        pass
+
+    @abstractmethod
     def visit_local_get(self, instruction: local_get) -> T:
         pass
 
@@ -289,6 +337,10 @@ class _GeneratedVisitor(ABC, Generic[T]):
 
     @abstractmethod
     def visit_i32_const(self, instruction: i32_const) -> T:
+        pass
+
+    @abstractmethod
+    def visit_i32_lt_s(self, instruction: i32_lt_s) -> T:
         pass
 
     @abstractmethod

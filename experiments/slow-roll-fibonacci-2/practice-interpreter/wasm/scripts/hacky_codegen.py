@@ -1,14 +1,14 @@
 from typing import List, Mapping
 
-
 type_to_parsing_fn = {
     "i32": "decode_signed(stream)",
     "i64": "decode_signed(stream)",
     "f32": "decode_float32(stream)",
     "f64": "decode_float64(stream)",
-    "local_idx": "decode_signed(stream)",
-    "global_idx": "decode_signed(stream)",
-    "label_idx": "decode_signed(stream)",
+    "local_idx": "decode_unsigned(stream)",
+    "global_idx": "decode_unsigned(stream)",
+    "label_idx": "decode_unsigned(stream)",
+    "func_idx": "decode_unsigned(stream)",
 }
 
 INSTRUCTION_CLASS_TEMPLATE = """
@@ -96,6 +96,8 @@ if __name__ == "__main__":
         0x01: ("nop", []),
         0x0C: ("br", ["label_idx"]),  #
         0x0D: ("br_if", ["label_idx"]),  #
+        0x0F: ("wasm_return", []),  #
+        0x10: ("call", ["func_idx"]),  #
         # ===
         0x20: ("local.get", ["local_idx"]),  #
         0x21: ("local.set", ["local_idx"]),  #
@@ -111,7 +113,7 @@ if __name__ == "__main__":
         # 0x45: ("i32.eqz", []),
         # 0x46: ("i32.eq", []),
         # 0x47: ("i32.ne", []),
-        # 0x48: ("i32.lt_s", []),
+        0x48: ("i32.lt_s", []),
         # 0x49: ("i32.lt_u", []),
         # 0x4A: ("i32.gt_s", []),
         # 0x4B: ("i32.gt_u", []),
@@ -178,7 +180,7 @@ if __name__ == "__main__":
                 between_start_and_stop_marker = True
                 replacement_content += line  # Keep "##GEN_START"
                 replacement_content += gen(instructions_to_gen)
-            if stop_marker in line:
+            elif stop_marker in line:
                 between_start_and_stop_marker = False
                 replacement_content += line  # Keep "##GEN_STOP"
             elif between_start_and_stop_marker:
