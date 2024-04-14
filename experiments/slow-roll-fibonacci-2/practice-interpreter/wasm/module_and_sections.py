@@ -134,7 +134,9 @@ class ImportFunction(Import):
         return self._module
 
     @classmethod
-    def decode(cls, module: str, name: str, stream: Iterator[bytes]) -> "ExportFunction":
+    def decode(
+        cls, module: str, name: str, stream: Iterator[bytes]
+    ) -> "ExportFunction":
         return cls(module, name, decode_signed(stream))
 
 
@@ -153,7 +155,9 @@ class ImportMemory(Import):
         return self._module
 
     @classmethod
-    def decode(cls, module: str, name: str, stream: Iterator[bytes]) -> "ExportFunction":
+    def decode(
+        cls, module: str, name: str, stream: Iterator[bytes]
+    ) -> "ExportFunction":
         return cls(module, name, MemType.decode(stream))
 
 

@@ -1,18 +1,4 @@
-from .module_and_sections import (
-    GlobalType,
-    Expression,
-    Global,
-    MemType,
-    FuncType,
-    Export,
-    ExportFunction,
-    ExportTable,
-    ExportMemory,
-    ExportGlobal,
-    Local,
-    Code,
-    Module,
-)
+from .module_and_sections import *
 from .wasm_types import *
 from .instructions import *
 

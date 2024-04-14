@@ -62,7 +62,7 @@ multitasking.
 				- [x] expand decoder to include import section so simple_cond.wasm can be decoded
                   - [x] import section decode
                   - [x] instruction decode
-				- [ ] expand interpreter to include instructions needed for simple_cond.wasm
+				- [x] expand interpreter to include instructions needed for simple_cond.wasm
                   - It's probably easiest to just create fake functions for the
                   calls to imported functions in simple_cond.wasm
 	- [ ] Insert instruction counts and swap calls when limit is reached.

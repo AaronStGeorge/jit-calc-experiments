@@ -1,4 +1,5 @@
 import argparse
+from abc import ABC
 from dataclasses import dataclass, field
 from typing import Callable, List, Optional, Tuple
 
@@ -6,20 +7,71 @@ import wasm
 
 
 @dataclass
-class Function:
+class Function(ABC):
     nparams: int
-    code: wasm.Code
     does_return: bool
 
 
 @dataclass
+class DefinedFunction(Function):
+    code: wasm.Code
+
+
+@dataclass
+class ImportedFunction(Function):
+    func: Callable
+
+
+@dataclass
 class Break:
-    target_idx: wasm.label_idx
+    target_idx: Optional[wasm.label_idx]
+
+
+class Machine:
+    def __init__(self, functions: List[Function]):
+        self.functions = functions
+        # 1 gb
+        self.memory = bytearray(1024 * 1024 * 1024)
+
+    def call(
+        self, func: Function, *args: Tuple[wasm.WasmType, ...]
+    ) -> Optional[wasm.WasmType]:
+        if len(args) != func.nparams:
+            s = ("s" if func.nparams > 1 else "",)
+            raise ValueError(f"func expected {func.nparams} arg{s}")
+        if isinstance(func, DefinedFunction):
+            # If a function has 4 locals of type i32 and 2 of type f32 (spelled out
+            # in python: "[Local(type="i32", n=4), Local(type="f32", n=2)]") the
+            # instructions of said function will contain get and set instructions
+            # expecting the locals to be ordered: [i32,i32,i32,i32, f32,f32].
+            #
+            # Python doesn't care about types, so we just splat everything as one
+            # big array of None`s. A well formed program won't read the local values
+            # before writing them, so the value doesn't matter, we're just creating
+            # slots.
+            splatted_wasm_locals = sum(
+                ([None] * local.n for local in func.code.locals), []
+            )
+            # From the wasm spec: "The index space for locals is only accessible
+            # inside a function and includes the parameters of that function, which
+            # precede the local variables." So for a function with 1 param of type
+            # i32, 2 params of type i64, 4 locals of type i32, and 2 locals of type
+            # f32 the locals are expected to be laid out in this order:
+            #   [i32, i64,i64, i32,i32,i32,i32, f32,f32]
+            wasm_locals = list(args) + splatted_wasm_locals
+            executor = Executor(wasm_locals=wasm_locals, machine=self)
+            executor.execute(func.code.expr.instructions)
+            if func.does_return:
+                return executor.pop()
+        elif isinstance(func, ImportedFunction):
+            if func.does_return:
+                return func.func(*args)
 
 
 @dataclass
 class Executor(wasm.InstructionVisitor[Optional[Break]]):
     wasm_locals: List[wasm.WasmType]
+    machine: Machine
     stack: List[wasm.WasmType] = field(default_factory=list)
 
     def execute(self, instructions: List[wasm.Instruction]) -> Optional[Break]:
@@ -56,6 +108,7 @@ class Executor(wasm.InstructionVisitor[Optional[Break]]):
 
         Example of block behavior:
             # if (test) { consequence } else {alternative }
+            # ----
             block [
                 block [
                     (test)
@@ -67,7 +120,10 @@ class Executor(wasm.InstructionVisitor[Optional[Break]]):
             ]                     # Label: 1
         """
         maybe_br = self.execute(instruction.instructions)
-        if maybe_br and maybe_br.target_idx == 0:
+        if maybe_br and maybe_br.target_idx is None:
+            # a return was issued, bail
+            return maybe_br
+        elif maybe_br and maybe_br.target_idx == 0:
             # a break statement targeted this block, no need to cascade, the
             # break has been handled.
             return None
@@ -97,6 +153,7 @@ class Executor(wasm.InstructionVisitor[Optional[Break]]):
 
         Examples of loop behavior:
             # while (test) { body }
+            # ----
             block [
                 loop [            # Label: 0
                     (not test)
@@ -112,6 +169,7 @@ class Executor(wasm.InstructionVisitor[Optional[Break]]):
             #     body;
             #     n --;
             # }
+            # ----
             block [
                 block [
                     (load n >= 1 onto stack)
@@ -133,7 +191,10 @@ class Executor(wasm.InstructionVisitor[Optional[Break]]):
         while maybe_br and maybe_br.target_idx == 0:
             maybe_br = self.execute(instruction.instructions)
 
-        if maybe_br and maybe_br.target_idx > 0:
+        if maybe_br and maybe_br.target_idx is None:
+            # a return was issued, bail
+            return maybe_br
+        elif maybe_br and maybe_br.target_idx > 0:
             # a break statement targeted a scope greater than this block,
             # decrement the scope count and cascade break to outer scope.
             maybe_br.target_idx -= 1
@@ -173,43 +234,18 @@ class Executor(wasm.InstructionVisitor[Optional[Break]]):
     def visit_i32_add(self, _: wasm.i32_add) -> None:
         self.binary(lambda right, left: wasm.i32(right + left))
 
+    def visit_wasm_return(self, instruction: wasm.wasm_return) -> Break:
+        return Break(None)
 
-class Machine:
-    def __init__(self, functions: List[Function]):
-        self.functions = functions
-        # 1 gb
-        self.memory = bytearray(1024 * 1024 * 1024)
-
-    def call(
-        self, func_idx: wasm.func_idx, *args: Tuple[wasm.WasmType, ...]
-    ) -> Optional[wasm.WasmType]:
-        func: Function = self.functions[func_idx]
-        if len(args) != func.nparams:
-            s = ("s" if func.nparams > 1 else "",)
-            raise ValueError(
-                f"func with index {func_idx} expected {func.nparams} arg{s}"
-            )
-        # If a function has 4 locals of type i32 and 2 of type f32 (spelled out
-        # in python: "[Local(type="i32", n=4), Local(type="f32", n=2)]") the
-        # instructions of said function will contain get and set instructions
-        # expecting the locals to be ordered: [i32,i32,i32,i32, f32,f32].
-        #
-        # Python doesn't care about types, so we just splat everything as one
-        # big array of None`s. A well formed program won't read the local values
-        # before writing them, so the value doesn't matter, we're just creating
-        # slots.
-        splatted_wasm_locals = sum(([None] * local.n for local in func.code.locals), [])
-        # From the wasm spec: "The index space for locals is only accessible
-        # inside a function and includes the parameters of that function, which
-        # precede the local variables." So for a function with 1 param of type
-        # i32, 2 params of type i64, 4 locals of type i32, and 2 locals of type
-        # f32 the locals are expected to be laid out in this order:
-        #   [i32, i64,i64, i32,i32,i32,i32, f32,f32]
-        wasm_locals = list(args) + splatted_wasm_locals
-        exec = Executor(wasm_locals=wasm_locals)
-        exec.execute(func.code.expr.instructions)
+    def visit_call(self, instruction: wasm.call) -> None:
+        func = machine.functions[instruction.args[0]]
+        args = reversed([self.pop() for _ in range(func.nparams)])
+        result = machine.call(func, *args)
         if func.does_return:
-            return exec.pop()
+            self.push(result)
+
+    def visit_i32_lt_s(self, instruction: wasm.i32_lt_s) -> None:
+        self.binary(lambda right, left: wasm.s32(right < left))
 
 
 if __name__ == "__main__":
@@ -230,12 +266,35 @@ if __name__ == "__main__":
         stream = iter(bytes(file.read()))
         module = wasm.decode(stream)
 
-        # pull functions from module
-        functions = []
+        # setup functions
+        #
+        # from the wasm spec: "The index space for functions, tables, memories and globals includes respective imports
+        # declared in the same module.The indices of these imports precede the indices of other definitions in the same
+        # index space."
+        functions: List[Function] = []
+
+        # setup imported functions
+        for wasm_import in module.import_sec:
+            if isinstance(wasm_import, wasm.ImportFunction):
+                func_type = module.type_sec[wasm_import.func]
+
+                def stub(*args, name=wasm_import.name):
+                    print(f"{name} called with: {args}")
+                    return 69
+
+                functions.append(
+                    ImportedFunction(
+                        nparams=len(func_type.param_types),
+                        func=stub,
+                        does_return=len(func_type.result_types),
+                    )
+                )
+
+        # setup defined functions
         for idx, code in zip(module.func_sec, module.code_sec):
             func_type = module.type_sec[idx]
             functions.append(
-                Function(
+                DefinedFunction(
                     nparams=len(func_type.param_types),
                     code=code,
                     does_return=bool(func_type.result_types),
@@ -255,5 +314,7 @@ if __name__ == "__main__":
 
         # let's do it like they do on the discovery channel
         machine = Machine(functions=functions)
-        result = machine.call(exports[prog_args.func], *prog_args.args)
-        print(result)
+        func = functions[exports[prog_args.func]]
+        result = machine.call(func, *prog_args.args)
+        if func.does_return:
+            print(result)
