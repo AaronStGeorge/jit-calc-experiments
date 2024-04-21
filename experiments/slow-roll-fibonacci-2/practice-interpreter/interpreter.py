@@ -238,9 +238,9 @@ class Executor(wasm.InstructionVisitor[Optional[Break]]):
         return Break(None)
 
     def visit_call(self, instruction: wasm.call) -> None:
-        func = machine.functions[instruction.args[0]]
+        func = self.machine.functions[instruction.args[0]]
         args = reversed([self.pop() for _ in range(func.nparams)])
-        result = machine.call(func, *args)
+        result = self.machine.call(func, *args)
         if func.does_return:
             self.push(result)
 
@@ -248,7 +248,7 @@ class Executor(wasm.InstructionVisitor[Optional[Break]]):
         self.binary(lambda right, left: wasm.s32(right < left))
 
 
-if __name__ == "__main__":
+def main():
     parser = argparse.ArgumentParser(description="Wasm interpreter")
     parser.add_argument("wasm_file", type=str, help="Wasm file to load")
     parser.add_argument("func", type=str, help="Exported function to run")
@@ -303,7 +303,7 @@ if __name__ == "__main__":
 
         # find the function user wants
         exports = {
-            export.name: export.ref
+            export.name: export.func
             for export in module.export_sec
             if isinstance(export, wasm.ExportFunction)
         }
@@ -318,3 +318,7 @@ if __name__ == "__main__":
         result = machine.call(func, *prog_args.args)
         if func.does_return:
             print(result)
+
+
+if __name__ == "__main__":
+    main()

@@ -206,7 +206,7 @@ class Export(ABC):
 @dataclass
 class ExportFunction(Export):
     _name: str
-    ref: func_idx
+    func: func_idx
 
     @property
     def name(self):
@@ -214,13 +214,13 @@ class ExportFunction(Export):
 
     @classmethod
     def decode(cls, name: str, stream: Iterator[bytes]) -> "ExportFunction":
-        return cls(name, decode_signed(stream))
+        return cls(name, decode_unsigned(stream))
 
 
 @dataclass
 class ExportTable(Export):
     _name: str
-    ref: table_idx
+    table: table_idx
 
     @property
     def name(self):
@@ -228,13 +228,13 @@ class ExportTable(Export):
 
     @classmethod
     def decode(cls, name: str, stream: Iterator[bytes]) -> "ExportTable":
-        return cls(name, decode_signed(stream))
+        return cls(name, decode_unsigned(stream))
 
 
 @dataclass
 class ExportMemory(Export):
     _name: str
-    ref: mem_idx
+    mem: mem_idx
 
     @property
     def name(self):
@@ -242,13 +242,13 @@ class ExportMemory(Export):
 
     @classmethod
     def decode(cls, name: str, stream: Iterator[bytes]) -> "ExportMemory":
-        return cls(name, decode_signed(stream))
+        return cls(name, decode_unsigned(stream))
 
 
 @dataclass
 class ExportGlobal(Export):
     _name: str
-    ref: global_idx
+    wasm_global: global_idx
 
     @property
     def name(self):
@@ -256,7 +256,7 @@ class ExportGlobal(Export):
 
     @classmethod
     def decode(cls, name: str, stream: Iterator[bytes]) -> "ExportGlobal":
-        return cls(name, decode_signed(stream))
+        return cls(name, decode_unsigned(stream))
 
 
 @dataclass

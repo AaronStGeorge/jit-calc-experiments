@@ -1,0 +1,397 @@
+import argparse
+from abc import ABC
+
+from dataclasses import dataclass, field
+from typing import List, Optional, Dict, Callable, Any
+
+import mlir_wasm.ir as mlir
+from mlir_wasm.dialects import arith, cf, func, memref, wasm as wasm_d
+import mlir_wasm.extras.types as T
+
+import wasm
+
+
+@dataclass
+class Function(ABC):
+    name: str
+    inputs: List[mlir.Type]
+    results: List[mlir.Type]
+
+
+@dataclass
+class ImportedFunction(Function):
+    mlir_func: func.FuncOp
+
+
+@dataclass
+class DefinedFunction(Function):
+    code: wasm.Code
+
+
+@dataclass
+class Translator(wasm.InstructionVisitor[None]):
+    indices: List[Optional[mlir.Value]]
+    block: (
+        mlir.Block
+    )  # current block we're dumping code into, we need a reference so we can call "add block after" on
+    ip: mlir.InsertionPoint
+    functions: List[
+        Function
+    ]  # wasm functions kept around so we can generate func.call ops
+    index_ip: (
+        mlir.InsertionPoint
+    )  # insertion point at top of function (used for indices to keep them grouped)
+    wasm_locals: List[mlir.Value]
+    stack: List[mlir.Value] = field(default_factory=list)
+    jump_targets: List[mlir.Block] = field(default_factory=list)
+
+    def push(self, item: wasm.WasmType):
+        self.stack.append(item)
+
+    def pop(self):
+        return self.stack.pop()
+
+    def get_mlir_index(self, index: int) -> mlir.Value:
+        """
+        get_mlir_index ensures that we only create one `arith.constant` operation for each constant we need, and ensures
+        that all constants are created in a group at the top of the function. For example, when pushing wasm locals
+        `%arg0` and `%arg1` onto the stack (mem2reg will clean up the stack later) we only want to create one `%c0`
+        value.
+            func.func @add(%arg0: i32, %arg1: i32) -> i32 {
+                %c0 = arith.constant 0 : index
+                %alloca = memref.alloca() : memref<1xi32>
+                memref.store %arg0, %alloca[%c0] : memref<1xi32>
+                %alloca_0 = memref.alloca() : memref<1xi32>
+                memref.store %arg1, %alloca_0[%c0] : memref<1xi32>
+        """
+        if len(self.indices) < index + 1:
+            self.indices += [None] * (index + 1 - len(self.indices))
+        if self.indices[index] is None:
+            self.indices[index] = arith.ConstantOp.create_index(0, ip=self.index_ip)
+        return self.indices[index]
+
+    def visit_loop(self, instruction: wasm.loop) -> None:
+        pass
+
+    def visit_unreachable(self, instruction: wasm.unreachable) -> None:
+        pass
+
+    def visit_nop(self, instruction: wasm.nop) -> None:
+        pass
+
+    def visit_br(self, instruction: wasm.br) -> None:
+        pass
+
+    def visit_br_if(self, instruction: wasm.br_if) -> None:
+        """
+        Note on notation: both MLIR and wasm have the concept of a "block". To prevent confusion we use "wasm block" and
+        "MLIR block".
+
+        What do we need to do to compile a conditional branch instruction? We need to create a branch instruction,
+        obviously, but we also need to create an MLIR block. That might be a little counterintuitive, let's look at an
+        example:
+            Example wasm:
+                block
+                    ...some wasm...
+                    br_if 0 (;@1;)                          <---- the jump we're compiling
+                    ...more wasm...
+                end
+                ... even more wasm ...
+            Example translation to mlir:
+                    ...some wasm translated to mlir...
+                    cf.cond_br %0, ^bb2, ^bb1               <---- the jump that gets created
+                ^bb1:  // pred: ^bb0
+                    ...more wasm translated to mlir...
+                ^bb2:  // pred: ^bb0
+                    ...even more wasm translated to mlir...
+        Because MLIR blocks require straight line code without any jumps, after converting to MLIR "...some wasm..." and
+        "...more wasm..." need to be in separate MLIR blocks. In the example, this function will have to create `^bb1`,
+        when this function is called `^bb2` should already exist, being created by `visit_block`.
+
+        How about SSA and all that? Do we need to insert phi nodes? As MLIR uses an SSA representation, we have to
+        insert a phi node (MLIR actually uses mlir block arguments instead of phi nodes, but it's the same thing) at any
+        join point in the control flow graph where the value of a variable (aka something on the wasm stack) is path
+        dependent. Since we're messing around with the control flow graph in this function it's important to ask, do we
+        need phi nodes?
+
+        Let's look at the cases. Every branch we create in this function will look pretty similar to the example. In the
+        example, the new MLIR control flow graph has two edges. One edge jumps to ^bb1 as `...some wasm..." and "...more
+        wasm..." are in the same wasm block I call this an "inter-wasm-block jump". One edge jumps to ^bb2 as "...some
+        wasm..." and "... even more wasm ..." are in different wasm blocks I call this an "out-of-wasm-block jump".
+
+        inter-wasm-block jump:
+            Because a wasm jump can only jump *out* of the wasm block and nothing can jump into a wasm block at an
+            arbitrary point, an inter-wasm-block jump _can't_ create a join point where the value of a variable is path
+            dependent. The mlir block following an inter-wasm-block jump must have been reached through the mlir block
+            before it. In graph theory terminology it the node before the inter-wasm-block jump strictly dominates the
+            node after. So we never need phi nodes in the block following an inter-wasm-block jump.
+
+        out-of-wasm-block jumps:
+            From: https://doi.org/10.1145/3140587.3062363:
+                "Conceptually, [wasm] blocks execute like function calls. Each [wasm] block pops its argument values off
+                the stack, creates a new stack, pushes the arguments onto the new stack, executes, pops its results off
+                the internal stack, and then pushes its results onto the outer stack."
+            By construction, a jump out of a wasm block that creates join points in the control flow graph where the
+            value of a variable is path dependent will have wasm jump arguments. We need phi nodes if and only if there
+            are block arguments.
+        """
+        new_block = self.block.create_after()
+        cf.cond_br(
+            self.pop(),
+            [],
+            [],
+            self.jump_targets[instruction.args[0]],
+            new_block,
+            ip=self.ip,
+        )
+        self.block = new_block
+        self.ip = mlir.InsertionPoint(new_block)
+
+    def visit_local_get(self, instruction: wasm.local_get) -> None:
+        self.push(
+            memref.load(
+                self.wasm_locals[instruction.args[0]],
+                self.get_mlir_index(0),
+                ip=self.ip,
+            )
+        )
+
+    def visit_local_set(self, instruction: wasm.local_set) -> None:
+        pass
+
+    def visit_local_tee(self, instruction: wasm.local_tee) -> None:
+        pass
+
+    def visit_i32_const(self, instruction: wasm.i32_const) -> None:
+        self.push(arith.constant(T.i32(), instruction.args[0], ip=self.ip))
+
+    def visit_i32_ge_s(self, instruction: wasm.i32_ge_s) -> None:
+        pass
+
+    def visit_i32_add(self, instruction: wasm.i32_add) -> None:
+        lhs = self.pop()
+        rhs = self.pop()
+        result = arith.addi(lhs, rhs, ip=self.ip)
+        self.push(result)
+
+    def visit_block(self, instruction: wasm.block) -> None:
+        """
+        Note on notation: both MLIR and wasm have the concept of a "block". To prevent confusion we use "wasm block" and
+        "MLIR block".
+
+        How to wasm blocks map to MLIR blocks? At first, you might think we need to introduce an MLIR block any time we
+        encounter a wasm block. But they're actually very different semantically. A wasm block can be thought of as
+        introducing a label. Some wasm like this:
+            block
+                ...some stuff...
+                br_if 0 (;@1;)
+                ...more stuff...
+            end
+            ... even more stuff ...
+        is equivalent to assembly like:
+                ...some stuff...
+                JNZ .TARGET
+                ...more stuff...
+            .TARGET
+                ...even more stuff...
+        We really only need to create an MLIR block _after_ the wasm block we're compiling, so that jumps inside the
+        wasm block we're compiling have a target to jump to. So usually the MLIR block we create actually holds the
+        instructions _after_ the block we're currently compiling. Not to say we never need to create an MLIR block to
+        hold the instructions from the wasm block we're currently compiling.
+
+        We do need to create a MLIR block for the instructions of the wasm block we're compiling if it has block
+        arguments. From: https://doi.org/10.1145/3140587.3062363:
+            "Conceptually, [wasm] blocks execute like function calls. Each [wasm] block pops its argument values off
+            the stack, creates a new stack, pushes the arguments onto the new stack, executes, pops its results off
+            the internal stack, and then pushes its results t onto the outer stack."
+        The wasm block we're compiling might have arguments if there are jumps into the block with path dependent values
+        not stored in wasm locals.
+        """
+        new_block = self.block.create_after()
+
+        block_translator = Translator(
+            ip=self.ip,
+            index_ip=self.index_ip,
+            indices=self.indices,
+            wasm_locals=self.wasm_locals,
+            block=self.block,
+            jump_targets=[new_block] + self.jump_targets,
+            functions=self.functions,
+        )
+
+        for block_instruction in instruction.instructions:
+            block_instruction.accept(block_translator)
+
+        self.block = new_block
+        self.ip = mlir.InsertionPoint(new_block)
+
+    def visit_call(self, instruction: wasm.call) -> None:
+        wasm_func = self.functions[instruction.args[0]]
+        assert isinstance(wasm_func, ImportedFunction)
+        args = list(reversed([self.pop() for _ in range(len(wasm_func.inputs))]))
+        result = func.CallOp(wasm_func.mlir_func, args, ip=self.ip)
+        if wasm_func.results:
+            self.push(result)
+
+    def visit_wasm_return(self, instruction: wasm.wasm_return) -> None:
+        func.return_([self.pop()], ip=self.ip)
+
+    def visit_i32_lt_s(self, instruction: wasm.i32_lt_s) -> None:
+        lhs = self.pop()
+        rhs = self.pop()
+        result = arith.cmpi(arith.CmpIPredicate.slt, lhs, rhs, ip=self.ip)
+        self.push(result)
+
+
+def compile_wasm(wasm_module: wasm.Module) -> mlir.Module:
+    """
+    expected to be called within a with Context block
+    """
+    wasm_d.register_dialect()
+    wasm_to_mlir_type: Dict[str, mlir.Type] = {"i32": T.i32()}
+
+    with mlir.Location.unknown() as loc:
+        mlir_module = mlir.Module.create()
+        ip = mlir.InsertionPoint(mlir_module.body)
+
+        # Compile the imports and package up data from wasm.Module related to imported functions for later processing.
+        # The binary encoding is convenient for sending the program over wires, but less so for our tasks.
+        imported_functions: List[ImportedFunction] = []
+        for wasm_import in wasm_module.import_sec:
+            if isinstance(wasm_import, wasm.ImportFunction):
+                inputs = [
+                    wasm_to_mlir_type[t]
+                    for t in wasm_module.type_sec[wasm_import.func].param_types
+                ]
+                results = [
+                    wasm_to_mlir_type[t]
+                    for t in wasm_module.type_sec[wasm_import.func].result_types
+                ]
+                imported_functions.append(
+                    ImportedFunction(
+                        name=wasm_import.name,
+                        inputs=inputs,
+                        results=results,
+                        mlir_func=func.FuncOp(
+                            name=wasm_import.name,
+                            type=mlir.FunctionType.get(inputs=inputs, results=results),
+                            ip=ip,
+                            visibility="private",
+                        ),
+                    )
+                )
+
+        # exported_func_idx_to_name is a mapping from function index space to name of exported function. Currently,
+        # because we are compiling wasm generated from C code using the "-Wl,--export-all" flag, every function has an
+        # exported name. That might not be the case in the future.
+        exported_func_idx_to_name: Dict[wasm.func_idx, str] = {
+            wasm_func.func: wasm_func.name
+            for wasm_func in wasm_module.export_sec
+            if isinstance(wasm_func, wasm.ExportFunction)
+        }
+
+        # Package up defined functions (aka functions for which this module provides an implementation).
+        defined_functions: List[DefinedFunction] = []
+        for i, (type_idx, code) in enumerate(
+            zip(wasm_module.func_sec, wasm_module.code_sec)
+        ):
+            func_type = wasm_module.type_sec[type_idx]
+
+            # from the wasm spec: "the index space for functions, tables, memories and globals includes respective
+            # imports declared in the same module. The indices of these imports precede the indices of other
+            # definitions in the same index space."
+            func_idx: wasm.func_idx = wasm.func_idx(len(imported_functions) + i)
+
+            func_name = exported_func_idx_to_name[func_idx]
+            # hack for now, I don't really know what "__wasm_call_ctors" does which seems to be  there in every
+            # wasm blob compiled from a C program and stuff
+            if not func_name.startswith("__"):
+                inputs = [wasm_to_mlir_type[t] for t in func_type.param_types]
+                results = [wasm_to_mlir_type[t] for t in func_type.result_types]
+                defined_functions.append(
+                    DefinedFunction(
+                        name=func_name, inputs=inputs, results=results, code=code
+                    )
+                )
+
+        # compile defined functions
+        for wasm_func in defined_functions:
+            mlir_func = func.FuncOp(
+                name=wasm_func.name,
+                type=mlir.FunctionType.get(
+                    inputs=wasm_func.inputs, results=wasm_func.results
+                ),
+                ip=ip,
+            )
+            entry_block = mlir_func.add_entry_block()
+            index_ip = mlir.InsertionPoint.at_block_begin(entry_block)
+            indices = [arith.ConstantOp.create_index(0, ip=index_ip)]
+            ip = mlir.InsertionPoint(entry_block)
+            # Create stack storage and store all local variables for a function.
+            #
+            # From the wasm spec: "The index space for locals is only accessible
+            # inside a function and includes the parameters of that function, which
+            # precede the local variables." So for a function with 1 param of type
+            # i32, 2 params of type i64, 4 locals of type i32, and 2 locals of type
+            # f32 the locals are expected to be laid out in this order:
+            #   [i32, i64,i64, i32,i32,i32,i32, f32,f32]
+            #
+            # For simplicity, we'll allocate storage on the stack for everything. Then
+            # any local.get becomes a load instruction and a local.set becomes a store
+            # instruction. MLIR's mem2reg pass should hopefully clean everything up
+            # later.
+            wasm_locals: List[mlir.Value] = []
+            for arg, mlir_type in zip(
+                mlir_func.entry_block.arguments, wasm_func.inputs
+            ):
+                stack_allocation = memref.alloca(T.memref(1, mlir_type), [], [], ip=ip)
+                memref.store(arg, stack_allocation, indices[0], ip=ip)
+                wasm_locals.append(stack_allocation)
+            for local in wasm_func.code.locals:
+                stack_allocation = memref.alloca(
+                    T.memref(1, wasm_to_mlir_type[local.valtype]),
+                    [],
+                    [],
+                    ip=ip,
+                )
+                wasm_locals.append(stack_allocation)
+
+            translator = Translator(
+                wasm_locals=wasm_locals,
+                block=entry_block,
+                ip=ip,
+                indices=indices,
+                index_ip=index_ip,
+                # from the wasm spec: "the index space for functions, tables, memories and globals includes respective
+                # imports declared in the same module. The indices of these imports precede the indices of other
+                # definitions in the same index space."
+                functions=imported_functions + defined_functions,
+            )
+            for instr in wasm_func.code.expr.instructions:
+                instr.accept(translator)
+
+            # add return if there is one
+            if wasm_func.results:
+                func.ReturnOp([translator.pop()], ip=translator.ip)
+
+        return mlir_module
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Translate wasm to mlir")
+    parser.add_argument("wasm_file", type=str, help="Wasm file to load")
+
+    prog_args = parser.parse_args()
+
+    with open(prog_args.wasm_file, "rb") as file:
+        # decode module
+        stream = iter(bytes(file.read()))
+        wasm_module = wasm.decode(stream)
+
+        with mlir.Context():
+            mlir_module = compile_wasm(wasm_module)
+            print(mlir_module)
+
+
+if __name__ == "__main__":
+    main()

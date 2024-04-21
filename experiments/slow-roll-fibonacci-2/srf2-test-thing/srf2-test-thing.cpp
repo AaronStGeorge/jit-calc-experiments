@@ -28,7 +28,6 @@
 #include "llvm/Support/Error.h"
 #include "llvm/Support/TargetSelect.h"
 
-
 #include "Wasm/WasmDialect.h"
 #include "Wasm/WasmPasses.h"
 
@@ -66,11 +65,11 @@ llvm::orc::ThreadSafeModule getLLVMIRFromStdin() {
   std::stringstream ss;
   std::string line;
   while (std::getline(std::cin, line)) {
-    ss << line;
+    ss << line << std::endl;
   }
+
   mlir::OwningOpRef<mlir::ModuleOp> module =
-      mlir::parseSourceString<mlir::ModuleOp>(ss.str(),
-                                              &mlirContext);
+      mlir::parseSourceString<mlir::ModuleOp>(ss.str(), &mlirContext);
   if (!module) {
     llvm::errs() << "module couldn't be created\n";
     exit(1);
@@ -93,6 +92,16 @@ llvm::orc::ThreadSafeModule getLLVMIRFromStdin() {
                                      std::move(llvmContext));
 }
 
+int a_func() {
+  std::cout << "func_a called" << std::endl;
+  return 69;
+}
+
+int b_func() {
+  std::cout << "func_b called" << std::endl;
+  return 420;
+}
+
 int main(int argc, char *argv[]) {
   // LLVM init
   llvm::InitializeNativeTarget();
@@ -102,15 +111,34 @@ int main(int argc, char *argv[]) {
   // create LLJIT a pre-built jit compiler for LLVM IR
   auto jit = llvm::cantFail(llvm::orc::LLJITBuilder().create());
 
+  // load symbols into jit that we would like to call from jit-ed code
+  llvm::cantFail(jit->getMainJITDylib().define(llvm::orc::absoluteSymbols({
+      {
+          jit->mangleAndIntern("a_func"),
+          {
+              llvm::orc::ExecutorAddr::fromPtr(a_func),
+              llvm::JITSymbolFlags::Exported,
+          },
+      },
+      {
+          jit->mangleAndIntern("b_func"),
+          {
+              llvm::orc::ExecutorAddr::fromPtr(b_func),
+              llvm::JITSymbolFlags::Exported,
+          },
+      },
+  })));
+
   // load fib example into jit. This should result in a page with execute
   // permissions containing the assembly compiled from the LLVM IR we produced
   llvm::cantFail(jit->addIRModule(getLLVMIRFromStdin()));
 
   // grab address of add function
-  auto addAddress = llvm::cantFail(jit->lookup("add"));
-  int (*add)(int, int) = addAddress.toPtr<int(int, int)>();
+  auto condAddress = llvm::cantFail(jit->lookup("cond"));
+  int (*cond)(int) = condAddress.toPtr<int(int)>();
 
-  std::cout << add(60,9) << std::endl;
+  std::cout << cond(69) << std::endl;
+  std::cout << cond(6) << std::endl;
 
   return 0;
 }
