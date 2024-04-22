@@ -45,11 +45,17 @@ class Translator(wasm.InstructionVisitor[None]):
     stack: List[mlir.Value] = field(default_factory=list)
     jump_targets: List[mlir.Block] = field(default_factory=list)
 
-    def push(self, item: wasm.WasmType):
+    def push(self, item: mlir.Value):
         self.stack.append(item)
 
     def pop(self):
         return self.stack.pop()
+
+    def binary(self, op_func: Callable[[mlir.Value, mlir.Value], mlir.Value]):
+        rhs = self.pop()
+        lhs = self.pop()
+        result = op_func(lhs, rhs)
+        self.push(result)
 
     def get_mlir_index(self, index: int) -> mlir.Value:
         """
@@ -169,10 +175,7 @@ class Translator(wasm.InstructionVisitor[None]):
         pass
 
     def visit_i32_add(self, instruction: wasm.i32_add) -> None:
-        lhs = self.pop()
-        rhs = self.pop()
-        result = arith.addi(lhs, rhs, ip=self.ip)
-        self.push(result)
+        self.binary(lambda lhs, rhs: arith.addi(lhs=lhs, rhs=rhs, ip=self.ip))
 
     def visit_block(self, instruction: wasm.block) -> None:
         """
@@ -237,10 +240,11 @@ class Translator(wasm.InstructionVisitor[None]):
         func.return_([self.pop()], ip=self.ip)
 
     def visit_i32_lt_s(self, instruction: wasm.i32_lt_s) -> None:
-        lhs = self.pop()
-        rhs = self.pop()
-        result = arith.cmpi(arith.CmpIPredicate.slt, lhs, rhs, ip=self.ip)
-        self.push(result)
+        self.binary(
+            lambda lhs, rhs: arith.cmpi(
+                arith.CmpIPredicate.slt, lhs=lhs, rhs=rhs, ip=self.ip
+            )
+        )
 
 
 def compile_wasm(wasm_module: wasm.Module) -> mlir.Module:
@@ -348,13 +352,14 @@ def compile_wasm(wasm_module: wasm.Module) -> mlir.Module:
                 memref.store(arg, stack_allocation, indices[0], ip=ip)
                 wasm_locals.append(stack_allocation)
             for local in wasm_func.code.locals:
-                stack_allocation = memref.alloca(
-                    T.memref(1, wasm_to_mlir_type[local.valtype]),
-                    [],
-                    [],
-                    ip=ip,
-                )
-                wasm_locals.append(stack_allocation)
+                for _ in range(local.n):
+                    stack_allocation = memref.alloca(
+                        T.memref(1, wasm_to_mlir_type[local.valtype]),
+                        [],
+                        [],
+                        ip=ip,
+                    )
+                    wasm_locals.append(stack_allocation)
 
             translator = Translator(
                 wasm_locals=wasm_locals,
