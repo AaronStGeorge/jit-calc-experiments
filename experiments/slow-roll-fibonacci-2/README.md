@@ -39,7 +39,7 @@ multitasking.
 			could really speed things up!
 		- We'll need somewhere to insert the swap calls, an MLIR pass would be a
 			very nice way to do this.
-- [ ] create a webassembly runtime using MLIR good enough to run fibonacci
+- [ ] create a webassembly runtime using MLIR good enough to run fibonacci with swap calls
 	- [x] write a webassembly interpreter for practice (also only that's good enough to do fibonacci).
 	- [ ] ~~create an MLIR webassembly dialect~~.
 		- a wasm dialect probably isn't necessary. We'll definitely need a "towervm"
@@ -54,11 +54,11 @@ multitasking.
 		won't have any way to back out the wasm provenance of MLIR instructions
 		after lowering. I don't love welding those steps together, but it shouldn't
 		be the hardest thing to break apart later should things get ugly.
-	- [ ] write a compiler?,assembler? that takes serialized wasm and generates
+	- [x] write a compiler?,assembler? that takes serialized wasm and generates
 	MLIR that can be compiled down to machine code and executed
 		- [x] for add.c
-		- [ ] for fib.c
-			- [ ] for simple_cond.c (simpler branching behavior + CFG)
+		- [x] for fib.c
+			- [x] for simple_cond.c (simpler branching behavior + CFG)
 				- [x] expand decoder to include import section so simple_cond.wasm can be decoded
                   - [x] import section decode
                   - [x] instruction decode
