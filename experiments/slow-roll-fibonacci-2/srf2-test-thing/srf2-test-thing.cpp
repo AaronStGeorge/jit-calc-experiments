@@ -134,11 +134,12 @@ int main(int argc, char *argv[]) {
   llvm::cantFail(jit->addIRModule(getLLVMIRFromStdin()));
 
   // grab address of add function
-  auto condAddress = llvm::cantFail(jit->lookup("cond"));
+  auto condAddress = llvm::cantFail(jit->lookup("fib"));
   int (*cond)(int) = condAddress.toPtr<int(int)>();
 
-  std::cout << cond(69) << std::endl;
-  std::cout << cond(6) << std::endl;
+  for (int i = 0; i < 10; i++) {
+    std::cout << cond(i) << std::endl;
+  }
 
   return 0;
 }

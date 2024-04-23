@@ -1,14 +1,17 @@
 import argparse
 from abc import ABC
-
 from dataclasses import dataclass, field
 from typing import List, Optional, Dict, Callable, Any
 
-import mlir_wasm.ir as mlir
-from mlir_wasm.dialects import arith, cf, func, memref, wasm as wasm_d
-import mlir_wasm.extras.types as T
-
 import wasm
+import mlir_wasm.ir as mlir
+import mlir_wasm.extras.types as T
+from mlir_wasm.dialects import arith, cf, func, memref, wasm as wasm_d
+
+
+def is_terminator(instruction: wasm.Instruction) -> bool:
+    terminators = [wasm.br, wasm.wasm_return]
+    return any([isinstance(instruction, terminator) for terminator in terminators])
 
 
 @dataclass
@@ -51,6 +54,9 @@ class Translator(wasm.InstructionVisitor[None]):
     def pop(self):
         return self.stack.pop()
 
+    def peek(self):
+        return self.stack[-1]
+
     def binary(self, op_func: Callable[[mlir.Value, mlir.Value], mlir.Value]):
         rhs = self.pop()
         lhs = self.pop()
@@ -76,8 +82,136 @@ class Translator(wasm.InstructionVisitor[None]):
             self.indices[index] = arith.ConstantOp.create_index(0, ip=self.index_ip)
         return self.indices[index]
 
+    def loop_or_block(self, instructions: List[wasm.Instruction], is_loop: bool):
+        """
+        Note on notation: both MLIR and wasm have the concept of a "block". To prevent confusion we use "wasm block" and
+        "MLIR block".
+
+        From the wasm spec:
+            Unlike with other index spaces, indexing of labels is relative by
+            nesting depth, that is, label 0 refers to the innermost structured
+            control instruction enclosing the referring branch instruction, while
+            increasing indices refer to those farther out. Consequently, labels can
+            only be referenced from within the associated structured control
+            instruction. This also implies that branches can only be directed
+            outwards, “breaking” from the block of the control construct they
+            target.  The exact effect depends on that control construct. From the
+            wasm spec "In case of block or if it is a forward jump, resuming
+            execution after the matching end. In case of loop it is a backward jump
+            to the beginning of the loop.
+        Example of block behavior:
+            # if (test) { consequence } else {alternative }
+            # ----
+            block [
+                block [
+                    (test)
+                    br_if 0       # Goto 0
+                    (alternative)
+                    br 1          # Goto 1
+                ]                 # Label: 0
+                (consequence)
+            ]                     # Label: 1
+        Examples of loop behavior:
+            # while (test) { body }
+            # ----
+            block [
+                loop [            # Label: 0
+                    (not test)
+                    br_if 1       # Goto 1 (break)
+                    (body)
+                    br 0,         # Goto 0 (continue)
+                ]
+            ]                     # Label: 1
+
+            # for(int i = 0; i < n; i++) { body }
+            # # which gets converted to # #
+            # while (n) {
+            #     body;
+            #     n --;
+            # }
+            # ----
+            block [
+                block [
+                    (load n >= 1 onto stack)
+                    br_if 0                   # Goto 0
+                    br 1                      # Goto 1
+                ]                             # Label: 0 (from inner block)
+                loop [                        # Label: 0 (from *loop*)
+                    (body)
+                    (n --)
+                    (load n >= 1 onto stack)
+                    ('br_if', 0),             # Goto 0 (continue)
+                ]
+            ]                                 # Label: 1 (from inner block)
+
+        When lowering, A wasm block can be thought of as introducing a label. Some wasm like this:
+            block
+                ...some stuff...
+                br_if 0 (;@1;)
+                ...more stuff...
+            end
+            ... even more stuff ...
+        is equivalent to assembly like:
+                ...some stuff...
+                b.lt target
+                ...more stuff...
+            target:
+                ...even more stuff...
+        Inside wasm loop jumps are backwards (continue) rather than the forward jump in wasm blocks (break).
+            loop
+                ...some stuff...
+                br_if 0 (;@1;)
+            end
+            ... even more stuff ...
+        is equivalent to assembly like:
+            target:
+                ...some stuff...
+                b.lt target
+                ...even more stuff...
+        For simplicity, we always compile a block or a loop into a separate mlir block, even though it isn't strictly
+        necessary. Passes can clean up the excess later.
+
+        What about SSA and stuff? Mainly we only need to worry about that when creating jumps, but wasm does have the
+        notion ob block arguments. From: https://doi.org/10.1145/3140587.3062363:
+            "Conceptually, [wasm] blocks execute like function calls. Each [wasm] block pops its argument values off
+            the stack, creates a new stack, pushes the arguments onto the new stack, executes, pops its results off
+            the internal stack, and then pushes its results t onto the outer stack."
+        The wasm block we're compiling might have arguments if there are jumps into the block with path dependent values
+        not stored in wasm locals.
+        """
+        block = self.block.create_after()
+        block_after = self.block.create_after()
+
+        cf.br([], block, ip=self.ip)
+
+        self.block = block
+        self.ip = mlir.InsertionPoint(block)
+
+        jump_targets = [block_after] + self.jump_targets
+        if is_loop:
+            jump_targets = [block] + self.jump_targets
+
+        translator = Translator(
+            ip=self.ip,
+            index_ip=self.index_ip,
+            indices=self.indices,
+            wasm_locals=self.wasm_locals,
+            block=self.block,
+            jump_targets=jump_targets,
+            functions=self.functions,
+        )
+
+        for block_instruction in instructions:
+            block_instruction.accept(translator)
+
+        if not is_terminator(instructions[-1]):
+            cf.br([], block_after, ip=translator.ip)
+
+        self.block = block_after
+        self.ip = mlir.InsertionPoint(block_after)
+
     def visit_loop(self, instruction: wasm.loop) -> None:
-        pass
+        self.loop_or_block(instruction.instructions, is_loop=True)
 
     def visit_unreachable(self, instruction: wasm.unreachable) -> None:
         pass
@@ -86,7 +220,7 @@ class Translator(wasm.InstructionVisitor[None]):
         pass
 
     def visit_br(self, instruction: wasm.br) -> None:
-        pass
+        cf.br([], self.jump_targets[instruction.args[0]], ip=self.ip)
 
     def visit_br_if(self, instruction: wasm.br_if) -> None:
         """
@@ -142,8 +276,14 @@ class Translator(wasm.InstructionVisitor[None]):
             are block arguments.
         """
         new_block = self.block.create_after()
+        val = self.pop()
+        if val.type != T.bool():
+            if val.type != T.i64() and val.type != T.i32():
+                raise ValueError("must be int type")
+            zero = arith.constant(val.type, 0, ip=self.ip)
+            val = arith.cmpi(arith.CmpIPredicate.ne, lhs=val, rhs=zero, ip=self.ip)
         cf.cond_br(
-            self.pop(),
+            val,
             [],
             [],
             self.jump_targets[instruction.args[0]],
@@ -163,70 +303,36 @@ class Translator(wasm.InstructionVisitor[None]):
         )
 
     def visit_local_set(self, instruction: wasm.local_set) -> None:
-        pass
+        memref.store(
+            self.pop(),
+            self.wasm_locals[instruction.args[0]],
+            self.get_mlir_index(0),
+            ip=self.ip,
+        )
 
     def visit_local_tee(self, instruction: wasm.local_tee) -> None:
-        pass
+        memref.store(
+            self.peek(),
+            self.wasm_locals[instruction.args[0]],
+            self.get_mlir_index(0),
+            ip=self.ip,
+        )
 
     def visit_i32_const(self, instruction: wasm.i32_const) -> None:
         self.push(arith.constant(T.i32(), instruction.args[0], ip=self.ip))
 
     def visit_i32_ge_s(self, instruction: wasm.i32_ge_s) -> None:
-        pass
+        self.binary(
+            lambda lhs, rhs: arith.cmpi(
+                arith.CmpIPredicate.sge, lhs=lhs, rhs=rhs, ip=self.ip
+            )
+        )
 
     def visit_i32_add(self, instruction: wasm.i32_add) -> None:
         self.binary(lambda lhs, rhs: arith.addi(lhs=lhs, rhs=rhs, ip=self.ip))
 
     def visit_block(self, instruction: wasm.block) -> None:
-        """
-        Note on notation: both MLIR and wasm have the concept of a "block". To prevent confusion we use "wasm block" and
-        "MLIR block".
-
-        How to wasm blocks map to MLIR blocks? At first, you might think we need to introduce an MLIR block any time we
-        encounter a wasm block. But they're actually very different semantically. A wasm block can be thought of as
-        introducing a label. Some wasm like this:
-            block
-                ...some stuff...
-                br_if 0 (;@1;)
-                ...more stuff...
-            end
-            ... even more stuff ...
-        is equivalent to assembly like:
-                ...some stuff...
-                JNZ .TARGET
-                ...more stuff...
-            .TARGET
-                ...even more stuff...
-        We really only need to create an MLIR block _after_ the wasm block we're compiling, so that jumps inside the
-        wasm block we're compiling have a target to jump to. So usually the MLIR block we create actually holds the
-        instructions _after_ the block we're currently compiling. Not to say we never need to create an MLIR block to
-        hold the instructions from the wasm block we're currently compiling.
-
-        We do need to create a MLIR block for the instructions of the wasm block we're compiling if it has block
-        arguments. From: https://doi.org/10.1145/3140587.3062363:
-            "Conceptually, [wasm] blocks execute like function calls. Each [wasm] block pops its argument values off
-            the stack, creates a new stack, pushes the arguments onto the new stack, executes, pops its results off
-            the internal stack, and then pushes its results t onto the outer stack."
-        The wasm block we're compiling might have arguments if there are jumps into the block with path dependent values
-        not stored in wasm locals.
-        """
-        new_block = self.block.create_after()
-
-        block_translator = Translator(
-            ip=self.ip,
-            index_ip=self.index_ip,
-            indices=self.indices,
-            wasm_locals=self.wasm_locals,
-            block=self.block,
-            jump_targets=[new_block] + self.jump_targets,
-            functions=self.functions,
-        )
-
-        for block_instruction in instruction.instructions:
-            block_instruction.accept(block_translator)
-
-        self.block = new_block
-        self.ip = mlir.InsertionPoint(new_block)
+        self.loop_or_block(instruction.instructions, is_loop=False)
 
     def visit_call(self, instruction: wasm.call) -> None:
         wasm_func = self.functions[instruction.args[0]]
