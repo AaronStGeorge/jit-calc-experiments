@@ -1,5 +1,15 @@
 # slow-roll-fibonacci-1
 
+> NOTE: THIS DOESN'T BUILD
+>
+> The implementation relies heavily on linux APIs that aren't available on
+> MacOS. Back in the before times linux was the shit, but now
+> `jit-calc-experiments` has seen the true way! Mac today, Mac tomorrow, Mac
+> always.
+>
+> `slow-roll-fibonacci-1` will not be ported to the one true development
+> environment, work continues in `slow-roll-fibonacci-2`.
+
 ## Why
 
 tl;dr To have a game that runs player functions but doesn't freeze we need a
