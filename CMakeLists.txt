@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20.0)
-project(jit-calc-experiments LANGUAGES CXX C)
+project(jit-calc-experiments LANGUAGES CXX C ASM)
 
 set(CMAKE_BUILD_WITH_INSTALL_NAME_DIR ON)
 

@@ -27,9 +27,9 @@ int main(int argc, char **argv) {
   printf("Starting main\n");
   size_t stack_size = 4 * 1024;
   char *stack = calloc(stack_size, sizeof(char));
-  *(uint64_t *)&stack[stack_size - 16] = (uint64_t)thread_fn;
+  thread_ctx.lr = (uint64_t)thread_fn;
 
-  thread_ctx.rsp = (uint64_t)&stack[stack_size - 16];
+  thread_ctx.sp = (uint64_t)&stack[stack_size];
 
   int swaps = 9;
   int return_val = -1;

@@ -6,14 +6,22 @@
 
 struct context {
   // stack pointer
-  uint64_t rsp;
-  uint64_t r15;
-  uint64_t r14;
-  uint64_t r13;
-  uint64_t r12;
-  uint64_t rbx;
-  // base pointer
-  uint64_t rbp;
+  uint64_t sp;
+  // link register
+  uint64_t lr;
+  // frame pointer
+  uint64_t fp;
+  // callee-saved registers
+  uint64_t x19;
+  uint64_t x20;
+  uint64_t x21;
+  uint64_t x22;
+  uint64_t x23;
+  uint64_t x24;
+  uint64_t x25;
+  uint64_t x26;
+  uint64_t x27;
+  uint64_t x28;
 };
 
 #ifdef __cplusplus
