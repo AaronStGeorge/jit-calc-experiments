@@ -53,10 +53,10 @@ llvm::orc::ThreadSafeModule compileFibExample() {
 
   // Parse static mlir function
   std::string moduleStr = R"mlir(
-  func.func private @swap(%from : !llvm.ptr, %to : !llvm.ptr) -> ()
+  func.func private @swap(%from : !llvm.ptr, %to : !llvm.ptr) -> !llvm.ptr
   func.func private @stop(%from : !llvm.ptr, %to : !llvm.ptr) -> ()
   func.func @fib(%main_ctx : !llvm.ptr, %thread_ctx : !llvm.ptr) -> () {
-    %n = arith.constant 12 : index
+    %n = arith.constant 10 : index
 
     %c0_index	= arith.constant 0 : index
     %c1_index	= arith.constant 1 : index
@@ -77,7 +77,7 @@ llvm::orc::ThreadSafeModule compileFibExample() {
       memref.store %j_load, %i[] : memref<i32>
       memref.store %tmp, %j[] : memref<i32>
 
-      func.call @swap(%thread_ctx, %main_ctx) : (!llvm.ptr, !llvm.ptr) -> ()
+      %_ = func.call @swap(%thread_ctx, %main_ctx) : (!llvm.ptr, !llvm.ptr) -> !llvm.ptr
     }
 
     %0 = memref.load %i[] : memref<i32>
@@ -138,13 +138,15 @@ int main(int argc, char **argv) {
   char *stack = (char *)calloc(stack_size, sizeof(char));
   // set the top of the stack to fib function. When the swap call returns this
   // value will be popped off and jumped (or returned) to.
-  *(uint64_t *)&stack[stack_size - 8] = (uint64_t)fib;
+  thread_ctx.lr = (uint64_t)fib;
 
   // set stack for thread context
-  thread_ctx.rsp = (uint64_t)&stack[stack_size - 8];
+  thread_ctx.sp = (uint64_t)&stack[stack_size];
+  thread_ctx.fp = (uint64_t)&stack[stack_size];
 
   printf("Starting main\n");
-  swap(&main_ctx, &thread_ctx);
+  uint64_t arg_ptr, return_ptr;
+  start(&main_ctx, &thread_ctx, (void *)&arg_ptr, (void *)&return_ptr);
   int i = 0;
   printf("in main i=%d\n", i);
 

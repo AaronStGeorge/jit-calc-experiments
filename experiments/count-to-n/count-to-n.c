@@ -30,6 +30,7 @@ int main(int argc, char **argv) {
   thread_ctx.lr = (uint64_t)thread_fn;
 
   thread_ctx.sp = (uint64_t)&stack[stack_size];
+  thread_ctx.fp = (uint64_t)&stack[stack_size];
 
   int swaps = 9;
   int return_val = -1;
