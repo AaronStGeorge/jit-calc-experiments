@@ -8,6 +8,6 @@
 #include "mlir/Interfaces/SideEffectInterfaces.h"
 
 #define GET_OP_CLASSES
-#include "Wasm/WasmOps.h.inc"
+#include "Dialect/Wasm/IR/WasmOps.h.inc"
 
 #endif // WASM_WASMOPS_H

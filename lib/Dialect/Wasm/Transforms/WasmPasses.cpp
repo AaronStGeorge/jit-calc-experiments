@@ -1,4 +1,4 @@
-#include "Wasm/WasmOps.h"
+#include "Dialect/Wasm/IR/WasmOps.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/IR/PatternMatch.h"
 #include "mlir/Rewrite/FrozenRewritePatternSet.h"
@@ -6,11 +6,11 @@
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
 #include "mlir/Dialect/Arith/IR/Arith.h"
 
-#include "Wasm/WasmPasses.h"
+#include "Dialect/Wasm/Transforms/Passes.h"
 
 namespace mlir::wasm {
 #define GEN_PASS_DEF_LOWERWASM
-#include "Wasm/WasmPasses.h.inc"
+#include "Dialect/Wasm/Transforms/Passes.h.inc"
 
 namespace {
 

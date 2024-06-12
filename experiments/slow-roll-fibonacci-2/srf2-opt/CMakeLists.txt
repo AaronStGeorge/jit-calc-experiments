@@ -8,6 +8,7 @@ target_link_libraries(srf2-opt PRIVATE
   ${conversion_libs}
   MLIROptLib
   Wasm
+  WasmTransforms
   )
 
 mlir_check_all_link_libraries(srf2-opt)

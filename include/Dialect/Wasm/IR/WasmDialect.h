@@ -4,6 +4,6 @@
 #include "mlir/Bytecode/BytecodeOpInterface.h"
 #include "mlir/IR/Dialect.h"
 
-#include "Wasm/WasmOpsDialect.h.inc"
+#include "Dialect/Wasm/IR/WasmOpsDialect.h.inc"
 
 #endif // WASM_WASMDIALECT_H

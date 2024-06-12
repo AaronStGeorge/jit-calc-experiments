@@ -20,6 +20,7 @@ target_link_libraries(srf2-test-thing PRIVATE
   MLIRTargetLLVMIRExport
   MLIRSupport
   Wasm
+  WasmTransforms
   )
 mlir_check_all_link_libraries(srf2-test-thing)
 # Don't ask me what the fuck this witchcraft

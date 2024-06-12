@@ -1,6 +1,4 @@
-add_mlir_dialect_library(Wasm
-        WasmDialect.cpp
-        WasmOps.cpp
+add_mlir_dialect_library(WasmTransforms
         WasmPasses.cpp
 
         ADDITIONAL_HEADER_DIRS
@@ -9,6 +7,8 @@ add_mlir_dialect_library(Wasm
         DEPENDS
         MLIRWasmOpsIncGen
         MLIRWasmPassesIncGen
+
+				Wasm
 
         LINK_LIBS PUBLIC
         MLIRIR

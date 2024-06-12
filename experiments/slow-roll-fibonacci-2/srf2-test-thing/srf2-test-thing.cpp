@@ -28,8 +28,8 @@
 #include "llvm/Support/Error.h"
 #include "llvm/Support/TargetSelect.h"
 
-#include "Wasm/WasmDialect.h"
-#include "Wasm/WasmPasses.h"
+#include "Dialect/Wasm/IR/WasmDialect.h"
+#include "Dialect/Wasm/Transforms/Passes.h"
 
 #include <cstdint>
 #include <iostream>

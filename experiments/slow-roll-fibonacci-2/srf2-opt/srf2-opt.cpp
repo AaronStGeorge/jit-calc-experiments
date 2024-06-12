@@ -12,8 +12,8 @@
 #include "llvm/Support/SourceMgr.h"
 #include "llvm/Support/ToolOutputFile.h"
 
-#include "Wasm/WasmDialect.h"
-#include "Wasm/WasmPasses.h"
+#include "Dialect/Wasm/IR/WasmDialect.h"
+#include "Dialect/Wasm/Transforms/Passes.h"
 
 int main(int argc, char **argv) {
   mlir::registerAllPasses();
