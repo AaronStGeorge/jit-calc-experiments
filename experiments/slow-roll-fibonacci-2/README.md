@@ -49,11 +49,12 @@ multitasking.
 		between the wasm instructions before lowering the wasm dialect to "standard"
 		MLIR. *Or*, we could just generate the MLIR that the wasm dialect would
 		lower to + generate the "towervm" instructions between each "chunk" of
-		lowered MLIR. I think the latter is a little easier and relatively risk
-		free. We'll need to lower + insert "towervm" instructions in one step as we
-		won't have any way to back out the wasm provenance of MLIR instructions
-		after lowering. I don't love welding those steps together, but it shouldn't
-		be the hardest thing to break apart later should things get ugly.
+		lowered MLIR.
+			- I think the latter is a little easier and relatively risk free. We'll
+			need to lower + insert "towervm" instructions in one step as we won't have
+			any way to back out the wasm provenance of MLIR instructions after
+			lowering. I don't love welding those steps together, but it shouldn't be
+			the hardest thing to break apart later should things get ugly.
 	- [x] write a compiler?,assembler? that takes serialized wasm and generates
 	MLIR that can be compiled down to machine code and executed
 		- [x] for add.c
@@ -66,6 +67,11 @@ multitasking.
                   - It's probably easiest to just create fake functions for the
                   calls to imported functions in simple_cond.wasm
 	- [ ] Insert instruction counts and swap calls when limit is reached.
+			- [ ] First thing is to be able to call into the generated code with a
+			context containing instruction counts I'd like to create an MLIR type to
+			represent the context that will lower to LLVM that's ABI compatible with a
+			C struct.
+
 	- [ ] ~~lower webassembly dialect to LLVM~~
 
 

@@ -1,13 +1,5 @@
 # jit-calc-experiments tests
 
-## Running all tests
-
-Run using the build system's `check` target that *should* sweep up all the individual test suites.
-
-```
-cmake --build build --target check
-```
-
 ## Running a specific test suite
 There should be a target in the build system for any given suite.
 

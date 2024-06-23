@@ -1,2 +1,2 @@
-add_subdirectory(TowerVM)
+add_subdirectory(TowerRuntime)
 add_subdirectory(Wasm)

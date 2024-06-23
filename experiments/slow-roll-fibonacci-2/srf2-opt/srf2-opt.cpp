@@ -13,6 +13,7 @@
 #include "llvm/Support/ToolOutputFile.h"
 
 #include "Dialect/Wasm/IR/WasmDialect.h"
+#include "Dialect/TowerRuntime/IR/TowerRuntimeDialect.h"
 #include "Dialect/Wasm/Transforms/Passes.h"
 
 int main(int argc, char **argv) {
@@ -21,6 +22,7 @@ int main(int argc, char **argv) {
 
   mlir::DialectRegistry registry;
   registry.insert<mlir::wasm::WasmDialect>();
+  registry.insert<mlir::towerRuntime::TowerRuntimeDialect>();
   registerAllDialects(registry);
 
   return mlir::asMainReturnCode(

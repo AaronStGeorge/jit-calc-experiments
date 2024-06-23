@@ -34,6 +34,8 @@ config.substitutions.append(("%jit_calc_experiments_libs", os.path.join(config.j
 # that are from MLIR
 config.substitutions.append(('%mlir_lib_dir', config.mlir_lib_dir))
 
+config.substitutions.append(('%tower_runtime_lib', os.path.join(config.jit_calc_experiments_obj_root, "lib", "TowerRuntime", f"libTowerRuntime{config.llvm_shlib_ext}")))
+
 llvm_config.use_default_substitutions()
 
 # test_exec_root: The root path where tests should be run.
