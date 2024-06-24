@@ -16,7 +16,7 @@
 func.func private @inc(%t: !llvm.ptr) -> ()
 func.func private @ding(%t: !llvm.ptr) -> ()
 
-func.func @entry(%88: !tower_runtime.ctx) -> () {
+func.func @entry() -> () {
 	%c420_i64 = arith.constant 420 :i64
 	%c69_i64 = arith.constant 69 :i64
 	%c0_i64 = arith.constant 0 :i64

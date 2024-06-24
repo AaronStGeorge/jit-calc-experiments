@@ -48,6 +48,7 @@ llvm_config.with_environment("PATH", config.llvm_tools_dir, append_path=True)
 config.jit_calc_experiments_tools_dir = os.path.join(config.jit_calc_experiments_obj_root, "bin")
 tool_dirs = [config.jit_calc_experiments_tools_dir, config.llvm_tools_dir]
 tools = [
+    "srf2-opt",
     "mlir-opt",
     "mlir-cpu-runner",
 ]
