@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import argparse
 from abc import ABC
 from dataclasses import dataclass, field

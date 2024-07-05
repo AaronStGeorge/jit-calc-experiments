@@ -7,6 +7,8 @@
 #include "mlir/Interfaces/InferTypeOpInterface.h"
 #include "mlir/Interfaces/SideEffectInterfaces.h"
 
+#include "Dialect/TowerRuntime/IR/TowerRuntimeTypes.h"
+
 #define GET_OP_CLASSES
 #include "Dialect/TowerRuntime/IR/TowerRuntimeOps.h.inc"
 
