@@ -6,6 +6,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "Dialect/TowerRuntime/IR/TowerRuntimeDialect.h"
 #include "Dialect/Wasm/IR/WasmDialect.h"
 #include "mlir/IR/Dialect.h"
 #include "mlir/IR/MLIRContext.h"
@@ -24,6 +25,7 @@ void registerTestTransformDialectExtension(DialectRegistry &);
 int main(int argc, char **argv) {
   DialectRegistry registry;
   registry.insert<mlir::wasm::WasmDialect>();
+  registry.insert<mlir::towerRuntime::TowerRuntimeDialect>();
   registerAllDialects(registry);
   registerAllExtensions(registry);
 

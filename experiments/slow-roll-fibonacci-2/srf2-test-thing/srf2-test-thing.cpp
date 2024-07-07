@@ -30,8 +30,10 @@
 
 #include "Dialect/Wasm/IR/WasmDialect.h"
 #include "Dialect/Wasm/Transforms/Passes.h"
+#include "TowerRuntime/TowerRuntime.h"
 
 #include <cstdint>
+#include <filesystem>
 #include <iostream>
 #include <sstream>
 #include <string>
@@ -92,16 +94,6 @@ llvm::orc::ThreadSafeModule getLLVMIRFromStdin() {
                                      std::move(llvmContext));
 }
 
-int a_func() {
-  std::cout << "func_a called" << std::endl;
-  return 69;
-}
-
-int b_func() {
-  std::cout << "func_b called" << std::endl;
-  return 420;
-}
-
 int main(int argc, char *argv[]) {
   // LLVM init
   llvm::InitializeNativeTarget();
@@ -111,35 +103,36 @@ int main(int argc, char *argv[]) {
   // create LLJIT a pre-built jit compiler for LLVM IR
   auto jit = llvm::cantFail(llvm::orc::LLJITBuilder().create());
 
-  // load symbols into jit that we would like to call from jit-ed code
+  // Load each symbol from the runtime we want to be available to running
+  // program into jit. Runtime is statically linked into this program. We could
+  // do some fancy shit like parse a header file dump all the names we find in,
+  // but that sounds like a pain in the ass.
+#define RUNTIME_FUNCTION(f)                                                    \
+  llvm::detail::DenseMapPair<llvm::orc::SymbolStringPtr,                       \
+                             llvm::orc::ExecutorSymbolDef>{                    \
+      jit->mangleAndIntern(#f),                                                \
+      {                                                                        \
+          llvm::orc::ExecutorAddr::fromPtr(f),                                 \
+          llvm::JITSymbolFlags::Exported,                                      \
+      },                                                                       \
+  }
   llvm::cantFail(jit->getMainJITDylib().define(llvm::orc::absoluteSymbols({
-      {
-          jit->mangleAndIntern("a_func"),
-          {
-              llvm::orc::ExecutorAddr::fromPtr(a_func),
-              llvm::JITSymbolFlags::Exported,
-          },
-      },
-      {
-          jit->mangleAndIntern("b_func"),
-          {
-              llvm::orc::ExecutorAddr::fromPtr(b_func),
-              llvm::JITSymbolFlags::Exported,
-          },
-      },
+      RUNTIME_FUNCTION(dump),
+      RUNTIME_FUNCTION(inc),
   })));
+#undef RUNTIME_FUNCTION
 
-  // load fib example into jit. This should result in a page with execute
+  // Load whatever jit. This should result in a page with execute
   // permissions containing the assembly compiled from the LLVM IR we produced
   llvm::cantFail(jit->addIRModule(getLLVMIRFromStdin()));
 
   // grab address of add function
-  auto condAddress = llvm::cantFail(jit->lookup("fib"));
-  int (*cond)(int) = condAddress.toPtr<int(int)>();
+  auto entryAddr = llvm::cantFail(jit->lookup("entry"));
+  void (*entry)(S *) = entryAddr.toPtr<void(S *)>();
 
-  for (int i = 0; i < 10; i++) {
-    std::cout << cond(i) << std::endl;
-  }
+  S s{.from = 69, .to = 420, .count = 0};
+
+  entry(&s);
 
   return 0;
 }

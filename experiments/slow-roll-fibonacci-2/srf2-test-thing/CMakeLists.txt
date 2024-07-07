@@ -21,6 +21,7 @@ target_link_libraries(srf2-test-thing PRIVATE
   MLIRSupport
   Wasm
   WasmTransforms
+  TowerRuntimeStatic
   )
 mlir_check_all_link_libraries(srf2-test-thing)
 # Don't ask me what the fuck this witchcraft

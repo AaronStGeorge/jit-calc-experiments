@@ -1,4 +1,8 @@
-add_library(TowerRuntime
+add_library(TowerRuntimeShared
   SHARED
-	Runtime.cpp
+	TowerRuntime.cpp
+)
+
+add_library(TowerRuntimeStatic
+	TowerRuntime.cpp
 )

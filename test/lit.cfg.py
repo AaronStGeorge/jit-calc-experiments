@@ -29,12 +29,27 @@ config.test_exec_root = os.path.join(config.jit_calc_experiments_obj_root, "test
 config.substitutions.append(("%shlibext", config.llvm_shlib_ext))
 # jit_calc_experiments_libs: path of lib directory, probably used for generated
 # code to call into  runtime functions compiled into .so files
-config.substitutions.append(("%jit_calc_experiments_libs", os.path.join(config.jit_calc_experiments_obj_root, "lib")))
+config.substitutions.append(
+    (
+        "%jit_calc_experiments_libs",
+        os.path.join(config.jit_calc_experiments_obj_root, "lib"),
+    )
+)
 # mlir_lib_dir: same thing as jit_calc_experiments_libs but for shared libraries
 # that are from MLIR
-config.substitutions.append(('%mlir_lib_dir', config.mlir_lib_dir))
+config.substitutions.append(("%mlir_lib_dir", config.mlir_lib_dir))
 
-config.substitutions.append(('%tower_runtime_lib', os.path.join(config.jit_calc_experiments_obj_root, "lib", "TowerRuntime", f"libTowerRuntime{config.llvm_shlib_ext}")))
+config.substitutions.append(
+    (
+        "%tower_runtime_lib",
+        os.path.join(
+            config.jit_calc_experiments_obj_root,
+            "lib",
+            "TowerRuntime",
+            f"libTowerRuntimeShared{config.llvm_shlib_ext}",
+        ),
+    )
+)
 
 llvm_config.use_default_substitutions()
 
@@ -45,7 +60,9 @@ config.test_exec_root = os.path.join(config.jit_calc_experiments_obj_root, "test
 llvm_config.with_environment("PATH", config.llvm_tools_dir, append_path=True)
 
 # setup substitutions for tools
-config.jit_calc_experiments_tools_dir = os.path.join(config.jit_calc_experiments_obj_root, "bin")
+config.jit_calc_experiments_tools_dir = os.path.join(
+    config.jit_calc_experiments_obj_root, "bin"
+)
 tool_dirs = [config.jit_calc_experiments_tools_dir, config.llvm_tools_dir]
 tools = [
     "srf2-opt",

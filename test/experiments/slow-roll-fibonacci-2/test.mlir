@@ -13,13 +13,14 @@
 // RUN:			-shared-libs=%tower_runtime_lib
 
 
-func.func private @inc(%t: !llvm.ptr) -> ()
-func.func private @ding(%t: !llvm.ptr) -> ()
+func.func private @dump(%t: !llvm.ptr) -> ()
 
 func.func @entry() -> () {
 	%c420_i64 = arith.constant 420 :i64
 	%c69_i64 = arith.constant 69 :i64
 	%c0_i64 = arith.constant 0 :i64
+	%c1_i64 = arith.constant 1 :i64
+	%c2_i64 = arith.constant 2 :i64
 	%c1_index = llvm.mlir.constant(1 : index) : i64
 	%0 = llvm.mlir.undef : !llvm.struct<(i64, i64, i64)>
 	%1 = llvm.insertvalue %c420_i64, %0[0] : !llvm.struct<(i64, i64, i64)>
@@ -27,12 +28,12 @@ func.func @entry() -> () {
 	%3 = llvm.insertvalue %c0_i64, %2[2] : !llvm.struct<(i64, i64, i64)>
 	%4 = llvm.alloca %c1_index x !llvm.struct<(i64, i64, i64)> : (i64) -> !llvm.ptr
 	llvm.store %3, %4 : !llvm.struct<(i64, i64, i64)>, !llvm.ptr
-	func.call @ding(%4) : (!llvm.ptr) -> ()
-	func.call @inc(%4) : (!llvm.ptr) -> ()
-	func.call @ding(%4) : (!llvm.ptr) -> ()
-	func.call @inc(%4) : (!llvm.ptr) -> ()
-	func.call @ding(%4) : (!llvm.ptr) -> ()
-	func.call @inc(%4) : (!llvm.ptr) -> ()
-	func.call @ding(%4) : (!llvm.ptr) -> ()
+	func.call @dump(%4) : (!llvm.ptr) -> ()
+	%5 = llvm.load %4 : !llvm.ptr -> !llvm.struct<(i64, i64, i64)>
+	%6 = llvm.extractvalue %5[2] : !llvm.struct<(i64, i64, i64)>
+	%7 = arith.addi %6, %c2_i64 : i64
+	%8 = llvm.insertvalue %7, %5[2] : !llvm.struct<(i64, i64, i64)>
+	llvm.store %8, %4 : !llvm.struct<(i64, i64, i64)>, !llvm.ptr
+	func.call @dump(%4) : (!llvm.ptr) -> ()
 	return
 }
