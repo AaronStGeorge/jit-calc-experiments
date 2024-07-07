@@ -118,7 +118,7 @@ int main(int argc, char *argv[]) {
   }
   llvm::cantFail(jit->getMainJITDylib().define(llvm::orc::absoluteSymbols({
       RUNTIME_FUNCTION(dump),
-      RUNTIME_FUNCTION(inc),
+      RUNTIME_FUNCTION(check_swap),
   })));
 #undef RUNTIME_FUNCTION
 
@@ -130,7 +130,7 @@ int main(int argc, char *argv[]) {
   auto entryAddr = llvm::cantFail(jit->lookup("entry"));
   void (*entry)(S *) = entryAddr.toPtr<void(S *)>();
 
-  S s{.from = 69, .to = 420, .count = 0};
+  S s{.from = 69, .to = 420, .count = 0, .limit = 2};
 
   entry(&s);
 

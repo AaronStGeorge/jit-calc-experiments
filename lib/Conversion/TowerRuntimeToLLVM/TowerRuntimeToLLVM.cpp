@@ -16,6 +16,7 @@
 #include "mlir/Transforms/DialectConversion.h"
 
 #include "llvm/ADT/StringRef.h"
+#include "llvm/Support/Debug.h"
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/FormatVariadic.h"
 
@@ -23,6 +24,8 @@
 #include "Dialect/TowerRuntime/IR/TowerRuntimeDialect.h"
 #include "Dialect/TowerRuntime/IR/TowerRuntimeOps.h"
 #include "Dialect/TowerRuntime/IR/TowerRuntimeTypes.h"
+
+#define DEBUG_TYPE "taco"
 
 namespace mlir {
 #define GEN_PASS_DEF_TOWERRUNTIMETOLLVMCONVERSIONPASS
@@ -41,9 +44,10 @@ public:
   static ContextStructBuilder load(OpBuilder &builder, Location loc,
                                    Value ptr) {
     auto i64Ty = builder.getI64Type();
-    auto blaTy = LLVM::LLVMStructType::getLiteral(builder.getContext(),
-                                                  {i64Ty, i64Ty, i64Ty});
-    return ContextStructBuilder(builder.create<LLVM::LoadOp>(loc, blaTy, ptr));
+    auto contextTy = LLVM::LLVMStructType::getLiteral(
+        builder.getContext(), {i64Ty, i64Ty, i64Ty, i64Ty});
+    auto load = builder.create<LLVM::LoadOp>(loc, contextTy, ptr);
+    return ContextStructBuilder(load.getResult());
   }
 
   Value count(OpBuilder &builder, Location loc) {
@@ -54,7 +58,8 @@ public:
   }
 };
 
-struct LowerIncrement : public OpConversionPattern<towerRuntime::IncrementCountOp> {
+struct LowerIncrement
+    : public OpConversionPattern<towerRuntime::IncrementCountOp> {
   using OpConversionPattern::OpConversionPattern;
 
   LogicalResult
@@ -75,8 +80,6 @@ struct LowerIncrement : public OpConversionPattern<towerRuntime::IncrementCountO
     rewriter.create<LLVM::StoreOp>(op->getLoc(), contextStructBuilder,
                                    adaptor.getInput());
 
-    // Remove original op
-    rewriter.replaceAllUsesWith(op.getResult(), adaptor.getInput());
     rewriter.eraseOp(op);
     return success();
   }
@@ -98,7 +101,7 @@ struct ToRuntimeCall : public OpConversionPattern<OpTy> {
     auto callee = symbolTable.lookup(calleeName);
     if (!callee || !isa<func::FuncOp>(callee)) {
       llvm_unreachable(
-          llvm::formatv("runtime function {} not found", calleeName)
+          llvm::formatv("couldn't find runtime function named {0}", calleeName)
               .str()
               .c_str());
     }
@@ -132,6 +135,8 @@ struct TowerRuntimeToLLVMConversionPass
     RewritePatternSet patterns(context);
     patterns.add<ToRuntimeCall<towerRuntime::DumpContextOp>>(
         typeConverter, context, symbolTable, "dump");
+    patterns.add<ToRuntimeCall<towerRuntime::CheckSwapOp>>(
+        typeConverter, context, symbolTable, "check_swap");
     patterns.add<LowerIncrement>(typeConverter, context);
 
     ConversionTarget target(*context);

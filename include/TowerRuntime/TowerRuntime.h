@@ -7,6 +7,7 @@ typedef struct {
   uint64_t from;
   uint64_t to;
   uint64_t count;
+  uint64_t limit;
 } S;
 
 
@@ -15,7 +16,8 @@ extern "C" {
 #endif
 
 void dump(S *s);
-S* inc(S *s);
+
+void check_swap(S *s);
 
 #ifdef __cplusplus
 } // extern "C"
