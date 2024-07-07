@@ -1,4 +1,5 @@
 #include "Conversion/TowerRuntimeToLLVM/TowerRuntimeToLLVM.h"
+#include "Dialect/TowerRuntime/Transforms/Passes.h"
 #include "mlir/Dialect/Arith/IR/Arith.h"
 #include "mlir/IR/Dialect.h"
 #include "mlir/IR/MLIRContext.h"
@@ -22,6 +23,7 @@
 int main(int argc, char **argv) {
   mlir::registerAllPasses();
   mlir::jitCalcExperiments::registerConversionPasses();
+  mlir::towerRuntime::registerPasses();
   mlir::wasm::registerLowerWasm();
 
   mlir::DialectRegistry registry;
