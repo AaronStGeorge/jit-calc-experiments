@@ -40,6 +40,7 @@ def TowerRuntime_IncrementCountOp : TowerRuntime_Op<"increment_count"> {
     }];
 
     let arguments = (ins TowerRuntime_Context:$input);
+    let results = (outs TowerRuntime_Context);
 
     let assemblyFormat = [{
         $input attr-dict `:` type($input)
