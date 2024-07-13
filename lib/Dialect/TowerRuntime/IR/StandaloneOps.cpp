@@ -6,8 +6,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "Dialect/TowerRuntime/IR/TowerRuntimeOps.h"
 #include "Dialect/TowerRuntime/IR/TowerRuntimeDialect.h"
+#include "Dialect/TowerRuntime/IR/TowerRuntimeOps.h"
 
 #define GET_OP_CLASSES
 #include "Dialect/TowerRuntime/IR/TowerRuntimeOps.cpp.inc"

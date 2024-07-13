@@ -4,6 +4,7 @@
 include "Dialect/TowerRuntime/IR/TowerRuntimeTypes.td"
 include "mlir/Interfaces/InferTypeOpInterface.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
+include "mlir/Dialect/LLVMIR/LLVMTypes.td"
 
 def TowerRuntime_DumpContextOp : TowerRuntime_Op<"dump"> {
     let summary = "Dumps a TowerRuntime context to stdout.";
@@ -46,5 +47,20 @@ def TowerRuntime_IncrementCountOp : TowerRuntime_Op<"increment_count"> {
         $input attr-dict `:` type($input)
     }];
 }
+
+def TowerRuntime_LoadOp : TowerRuntime_Op<"load"> {
+    let summary = "Load a TowerRuntime context from pointer.";
+    let description = [{
+        Useful for interfacing with C code.
+    }];
+
+    let arguments = (ins LLVMPointerType:$input);
+    let results = (outs TowerRuntime_Context);
+
+    let assemblyFormat = [{
+        $input attr-dict `:` type($input)
+    }];
+}
+
 
 #endif // TOWERRUNTIME_OPS

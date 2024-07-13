@@ -5,6 +5,7 @@
 #include "mlir/Conversion/LLVMCommon/VectorPattern.h"
 #include "mlir/Dialect/Arith/IR/Arith.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
+#include "mlir/Dialect/Func/Transforms/FuncConversions.h"
 #include "mlir/Dialect/LLVMIR/LLVMAttrs.h"
 #include "mlir/Dialect/LLVMIR/LLVMDialect.h"
 #include "mlir/Dialect/LLVMIR/LLVMTypes.h"
@@ -87,6 +88,18 @@ struct LowerIncrement
   }
 };
 
+struct LowerLoad : public OpConversionPattern<towerRuntime::LoadOp> {
+  using OpConversionPattern::OpConversionPattern;
+
+  LogicalResult
+  matchAndRewrite(towerRuntime::LoadOp op, OpAdaptor adaptor,
+                  ConversionPatternRewriter &rewriter) const override {
+    rewriter.replaceOpWithNewOp<LLVM::LoadOp>(
+        op, getTowerRuntimeContextType(op->getContext()), adaptor.getInput());
+    return success();
+  }
+};
+
 // Map op to runtime call, the type converter is expected to have done all the
 // work needed to convert operands.
 template <typename OpTy>
@@ -153,18 +166,23 @@ struct TowerRuntimeToLLVMConversionPass
     patterns.add<ToRuntimeCall<towerRuntime::CheckSwapOp>>(
         typeConverter, context, symbolTable, "check_swap");
     patterns.add<LowerIncrement>(typeConverter, context);
+    patterns.add<LowerLoad>(typeConverter, context);
+
+    // Ensure function signatures and alls are converted
+    populateCallOpTypeConversionPattern(patterns, typeConverter);
+    populateFunctionOpInterfaceTypeConversionPattern<func::FuncOp>(
+        patterns, typeConverter);
 
     ConversionTarget target(*context);
     target.addDynamicallyLegalOp<func::FuncOp>([&](func::FuncOp op) {
       return typeConverter.isSignatureLegal(op.getFunctionType()) &&
              typeConverter.isLegal(&op.getBody());
     });
-    target.addLegalOp<func::CallOp>();
+    target.addDynamicallyLegalOp<func::CallOp>([&](func::CallOp op) {
+      return typeConverter.isSignatureLegal(op.getCalleeType());
+    });
     target.addLegalDialect<LLVM::LLVMDialect>();
     target.addLegalDialect<arith::ArithDialect>();
-
-    populateFunctionOpInterfaceTypeConversionPattern<func::FuncOp>(
-        patterns, typeConverter);
 
     if (failed(applyPartialConversion(module, target, std::move(patterns))))
       signalPassFailure();

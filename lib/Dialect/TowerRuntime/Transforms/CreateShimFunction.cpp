@@ -7,18 +7,16 @@
 
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/FormatVariadic.h"
-#include <sstream>
 #define DEBUG_TYPE "taco"
 
 namespace mlir::towerRuntime {
 #define GEN_PASS_DEF_SHIMFUNCTION
 #include "Dialect/TowerRuntime/Transforms/Passes.h.inc"
 
-namespace {};
-
-class SwitchBarFoo : public impl::ShimFunctionBase<SwitchBarFoo> {
+class CreateShimFunction : public impl::ShimFunctionBase<CreateShimFunction> {
 public:
-  using impl::ShimFunctionBase<SwitchBarFoo>::ShimFunctionBase;
+  using impl::ShimFunctionBase<CreateShimFunction>::ShimFunctionBase;
+
   void runOnOperation() final {
     if (functionToShim.empty()) {
       return;
@@ -40,7 +38,7 @@ public:
     }
     func::FuncOp toShimFunc = cast<func::FuncOp>(toShimOp);
 
-    // TODO: check operands, for now we're just assuming that it's right
+    // TODO: check operands. For now, we're just assuming that it's right.
 
     std::string shimFunctionName = llvm::formatv("{0}_shim", functionToShim);
 
@@ -48,13 +46,15 @@ public:
 
     builder.setInsertionPointToStart(&module->getRegion(0).front());
     auto opFunctionTy = FunctionType::get(
-        builder.getContext(), {builder.getF32Type()}, {builder.getF32Type()});
+        builder.getContext(), {LLVM::LLVMPointerType::get(&getContext())}, {});
     auto opFunc = builder.create<func::FuncOp>(builder.getUnknownLoc(),
                                                shimFunctionName, opFunctionTy);
-    opFunc.setPrivate();
-
-    // LLVM_DEBUG(llvm::dbgs()
-    //            << "TACO functionToShim: " << functionToShim << "\n");
+    builder.setInsertionPointToStart(opFunc.addEntryBlock());
+    auto load = builder.create<towerRuntime::LoadOp>(builder.getUnknownLoc(),
+                                                     opFunc.getArgument(0));
+    builder.create<func::CallOp>(builder.getUnknownLoc(), toShimFunc,
+                                 Value(load));
+    builder.create<func::ReturnOp>(builder.getUnknownLoc());
   }
 };
 } // namespace mlir::towerRuntime

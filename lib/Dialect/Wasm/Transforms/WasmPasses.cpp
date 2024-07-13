@@ -1,10 +1,10 @@
 #include "Dialect/Wasm/IR/WasmOps.h"
+#include "mlir/Dialect/Arith/IR/Arith.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/IR/PatternMatch.h"
 #include "mlir/Rewrite/FrozenRewritePatternSet.h"
 #include "mlir/Support/LogicalResult.h"
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
-#include "mlir/Dialect/Arith/IR/Arith.h"
 
 #include "Dialect/Wasm/Transforms/Passes.h"
 
@@ -35,11 +35,9 @@ public:
   }
 };
 
-class SwitchBarFoo
-    : public impl::LowerWasmBase<SwitchBarFoo> {
+class SwitchBarFoo : public impl::LowerWasmBase<SwitchBarFoo> {
 public:
-  using impl::LowerWasmBase<
-      SwitchBarFoo>::LowerWasmBase;
+  using impl::LowerWasmBase<SwitchBarFoo>::LowerWasmBase;
   void runOnOperation() final {
     RewritePatternSet patterns(&getContext());
     patterns.add<AddOps, LocalGet>(&getContext());

@@ -14,10 +14,10 @@
 #include "llvm/Support/SourceMgr.h"
 #include "llvm/Support/ToolOutputFile.h"
 
-#include "Dialect/Wasm/IR/WasmDialect.h"
-#include "Dialect/TowerRuntime/IR/TowerRuntimeDialect.h"
-#include "Dialect/Wasm/Transforms/Passes.h"
 #include "Conversion/Passes.h"
+#include "Dialect/TowerRuntime/IR/TowerRuntimeDialect.h"
+#include "Dialect/Wasm/IR/WasmDialect.h"
+#include "Dialect/Wasm/Transforms/Passes.h"
 #include "mlir/InitAllExtensions.h"
 
 int main(int argc, char **argv) {

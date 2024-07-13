@@ -127,7 +127,7 @@ int main(int argc, char *argv[]) {
   llvm::cantFail(jit->addIRModule(getLLVMIRFromStdin()));
 
   // grab address of add function
-  auto entryAddr = llvm::cantFail(jit->lookup("entry"));
+  auto entryAddr = llvm::cantFail(jit->lookup("entry_shim"));
   void (*entry)(S *) = entryAddr.toPtr<void(S *)>();
 
   S s{.from = 69, .to = 420, .count = 0, .limit = 2};
