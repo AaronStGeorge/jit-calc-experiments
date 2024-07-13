@@ -10,7 +10,6 @@ typedef struct {
   uint64_t limit;
 } S;
 
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -22,6 +21,5 @@ void check_swap(S *s);
 #ifdef __cplusplus
 } // extern "C"
 #endif
-
 
 #endif // TOWER_RUNTIME_H

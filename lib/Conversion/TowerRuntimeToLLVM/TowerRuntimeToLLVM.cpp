@@ -26,6 +26,7 @@
 #include "Dialect/TowerRuntime/IR/TowerRuntimeDialect.h"
 #include "Dialect/TowerRuntime/IR/TowerRuntimeOps.h"
 #include "Dialect/TowerRuntime/IR/TowerRuntimeTypes.h"
+#include "Dialect/TowerRuntime/Utils/Utils.h"
 
 #define DEBUG_TYPE "taco"
 
@@ -38,12 +39,6 @@ using namespace mlir;
 
 namespace {
 
-LLVM::LLVMStructType getTowerRuntimeContextType(MLIRContext *context) {
-  auto i64Ty = IntegerType::get(context, 64);
-  return LLVM::LLVMStructType::getLiteral(context,
-                                          {i64Ty, i64Ty, i64Ty, i64Ty});
-}
-
 static constexpr unsigned kCountPosInContextStruct = 2;
 class ContextStructBuilder : public StructBuilder {
 public:
@@ -52,7 +47,7 @@ public:
   static ContextStructBuilder load(OpBuilder &builder, Location loc,
                                    Value ptr) {
     LLVM::LLVMStructType contextTy =
-        getTowerRuntimeContextType(builder.getContext());
+        towerRuntime::getTowerRuntimeContextType(builder.getContext());
     auto load = builder.create<LLVM::LoadOp>(loc, contextTy, ptr);
     return ContextStructBuilder(load.getResult());
   }
@@ -115,8 +110,9 @@ struct ToRuntimeCall : public OpConversionPattern<OpTy> {
         op.getLoc(), llvmTypeConverter.convertType(rewriter.getIndexType()),
         rewriter.getIntegerAttr(rewriter.getIndexType(), 1));
     Value allocated = rewriter.create<LLVM::AllocaOp>(
-        op.getLoc(), ptrTy, getTowerRuntimeContextType(rewriter.getContext()),
-        one, /*alignment=*/0);
+        op.getLoc(), ptrTy,
+        towerRuntime::getTowerRuntimeContextType(rewriter.getContext()), one,
+        /*alignment=*/0);
     rewriter.create<LLVM::StoreOp>(op.getLoc(), adaptor.getInput(), allocated);
 
     // call runtime function with pointer to promoted context
@@ -142,7 +138,7 @@ struct TowerRuntimeToLLVMConversionPass
     TypeConverter typeConverter;
     typeConverter.addConversion([](Type type) { return type; });
     typeConverter.addConversion([context](towerRuntime::ContextType type) {
-      return getTowerRuntimeContextType(context);
+      return towerRuntime::getTowerRuntimeContextType(context);
     });
 
     SymbolTable symbolTable = SymbolTable(module);

@@ -25,24 +25,24 @@ int main(int argc, char **argv) {
 
   builder.setInsertionPointToEnd(theModule.getBody());
 
-	LLVMTypeConverter typeConverter(&context);
+  LLVMTypeConverter typeConverter(&context);
 
-	auto elementType = mlir::FloatType::getF32(&context);
-	llvm::ArrayRef<int64_t> shape = {4, 5};
+  auto elementType = mlir::FloatType::getF32(&context);
+  llvm::ArrayRef<int64_t> shape = {4, 5};
   mlir::MemRefType memRefType = mlir::MemRefType::get(shape, elementType);
 
   mlir::Type ptrType = LLVM::LLVMPointerType::get(&context);
 
   auto ptr = builder.create<LLVM::UndefOp>(loc, ptrType);
 
-  auto bla = MemRefDescriptor::fromStaticShape(builder, loc, typeConverter, memRefType, ptr);
-	llvm::SmallVector<mlir::Value, 4> args;
+  auto bla = MemRefDescriptor::fromStaticShape(builder, loc, typeConverter,
+                                               memRefType, ptr);
+  llvm::SmallVector<mlir::Value, 4> args;
   MemRefDescriptor::unpack(builder, loc, bla, memRefType, args);
 
-	// auto convertedType = typeConverter.convertType(memRefType);
+  // auto convertedType = typeConverter.convertType(memRefType);
 
-	// auto des = MemRefDescriptor::undef(builder, loc, convertedType);
-
+  // auto des = MemRefDescriptor::undef(builder, loc, convertedType);
 
   theModule.dump();
 

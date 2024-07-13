@@ -1,4 +1,8 @@
+#include "Dialect/TowerRuntime/Utils/Utils.h"
+#include "mlir/Conversion/LLVMCommon/TypeConverter.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
+#include "mlir/Dialect/LLVMIR/LLVMDialect.h"
+#include "mlir/Dialect/LLVMIR/LLVMTypes.h"
 #include "mlir/IR/BuiltinOps.h"
 #include "mlir/IR/SymbolTable.h"
 
@@ -7,14 +11,11 @@
 
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/FormatVariadic.h"
-#include <sstream>
 #define DEBUG_TYPE "taco"
 
 namespace mlir::towerRuntime {
 #define GEN_PASS_DEF_SHIMFUNCTION
 #include "Dialect/TowerRuntime/Transforms/Passes.h.inc"
-
-namespace {};
 
 class SwitchBarFoo : public impl::ShimFunctionBase<SwitchBarFoo> {
 public:
@@ -45,16 +46,23 @@ public:
     std::string shimFunctionName = llvm::formatv("{0}_shim", functionToShim);
 
     mlir::OpBuilder builder(&getContext());
+    LLVMTypeConverter llvmTypeConverter(&getContext());
 
+    auto ptrTy = LLVM::LLVMPointerType::get(&getContext());
+
+    // Create from shim function to functionToShim
     builder.setInsertionPointToStart(&module->getRegion(0).front());
-    auto opFunctionTy = FunctionType::get(
-        builder.getContext(), {builder.getF32Type()}, {builder.getF32Type()});
+    auto shimFuncTy = FunctionType::get(builder.getContext(), {ptrTy}, {});
     auto opFunc = builder.create<func::FuncOp>(builder.getUnknownLoc(),
-                                               shimFunctionName, opFunctionTy);
-    opFunc.setPrivate();
-
-    // LLVM_DEBUG(llvm::dbgs()
-    //            << "TACO functionToShim: " << functionToShim << "\n");
+                                               shimFunctionName, shimFuncTy);
+    builder.setInsertionPointToStart(opFunc.addEntryBlock());
+    auto bla = builder.create<LLVM::LoadOp>(
+        builder.getUnknownLoc(),
+        towerRuntime::getTowerRuntimeContextType(&getContext()),
+        opFunc.getArgument(0));
+    builder.create<func::CallOp>(builder.getUnknownLoc(), toShimFunc,
+                                 Value(bla));
+    builder.create<func::ReturnOp>(builder.getUnknownLoc());
   }
 };
 } // namespace mlir::towerRuntime
