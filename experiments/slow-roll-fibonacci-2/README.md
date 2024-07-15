@@ -67,10 +67,13 @@ multitasking.
                   - It's probably easiest to just create fake functions for the
                   calls to imported functions in simple_cond.wasm
 	- [ ] Insert instruction counts and swap calls when limit is reached.
-			- [ ] First thing is to be able to call into the generated code with a
-			context containing instruction counts I'd like to create an MLIR type to
-			represent the context that will lower to LLVM that's ABI compatible with a
-			C struct.
+	  - [x] First thing is to be able to call into the generated code with a
+		context containing instruction counts. I'd like to create an MLIR type to
+		represent the context that will lower to LLVM that's ABI compatible with a
+		C struct.
+	  - [ ] Be able to swap in and out of generated code
+          - [ ] Python setup to be able to generate runtime dialect
+          - [ ] Insert the swap calls
 
 	- [ ] ~~lower webassembly dialect to LLVM~~
 
