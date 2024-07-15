@@ -4,11 +4,14 @@
 
 #include "Dialect/TowerRuntime/IR/TowerRuntimeOps.h"
 #include "Dialect/TowerRuntime/Transforms/Passes.h"
+#include "mlir/Support/LogicalResult.h"
 
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/FormatVariadic.h"
-#define DEBUG_TYPE "taco"
 
+#include <string>
+
+#define DEBUG_TYPE "taco"
 namespace mlir::towerRuntime {
 #define GEN_PASS_DEF_SHIMFUNCTION
 #include "Dialect/TowerRuntime/Transforms/Passes.h.inc"
@@ -21,6 +24,8 @@ public:
     if (functionToShim.empty()) {
       return;
     }
+
+    // grab function to shim
     auto module = getOperation();
     SymbolTable symbolTable(module);
     Operation *toShimOp = symbolTable.lookup(functionToShim);
@@ -36,19 +41,19 @@ public:
       signalPassFailure();
       return;
     }
-    func::FuncOp toShimFunc = cast<func::FuncOp>(toShimOp);
-
+    auto toShimFunc = cast<func::FuncOp>(toShimOp);
     // TODO: check operands. For now, we're just assuming that it's right.
 
-    std::string shimFunctionName = llvm::formatv("{0}_shim", functionToShim);
-
+    // create shim function prototype
     mlir::OpBuilder builder(&getContext());
-
     builder.setInsertionPointToStart(&module->getRegion(0).front());
     auto opFunctionTy = FunctionType::get(
         builder.getContext(), {LLVM::LLVMPointerType::get(&getContext())}, {});
+    std::string shimFunctionName = llvm::formatv("{0}_shim", functionToShim);
     auto opFunc = builder.create<func::FuncOp>(builder.getUnknownLoc(),
                                                shimFunctionName, opFunctionTy);
+
+    // create shim function body
     builder.setInsertionPointToStart(opFunc.addEntryBlock());
     auto load = builder.create<towerRuntime::LoadOp>(builder.getUnknownLoc(),
                                                      opFunc.getArgument(0));

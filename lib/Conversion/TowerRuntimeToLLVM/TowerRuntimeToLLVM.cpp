@@ -41,8 +41,9 @@ namespace {
 
 LLVM::LLVMStructType getTowerRuntimeContextType(MLIRContext *context) {
   auto i64Ty = IntegerType::get(context, 64);
+  auto ptrTy = LLVM::LLVMPointerType::get(context);
   return LLVM::LLVMStructType::getLiteral(context,
-                                          {i64Ty, i64Ty, i64Ty, i64Ty});
+                                          {ptrTy, ptrTy, i64Ty, i64Ty});
 }
 
 static constexpr unsigned kCountPosInContextStruct = 2;

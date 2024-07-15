@@ -4,14 +4,10 @@
 #include "mlir/Conversion/MemRefToLLVM/MemRefToLLVM.h"
 #include "mlir/Conversion/ReconcileUnrealizedCasts/ReconcileUnrealizedCasts.h"
 #include "mlir/Conversion/SCFToControlFlow/SCFToControlFlow.h"
-#include "mlir/Conversion/VectorToLLVM/ConvertVectorToLLVM.h"
 #include "mlir/Conversion/VectorToSCF/VectorToSCF.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/Dialect/Linalg/Passes.h"
-#include "mlir/ExecutionEngine/CRunnerUtils.h"
-#include "mlir/ExecutionEngine/ExecutionEngine.h"
 #include "mlir/ExecutionEngine/MemRefUtils.h"
-#include "mlir/ExecutionEngine/RunnerUtils.h"
 #include "mlir/IR/MLIRContext.h"
 #include "mlir/InitAllDialects.h"
 #include "mlir/Parser/Parser.h"
@@ -24,23 +20,19 @@
 #include "llvm/ExecutionEngine/Orc/LLJIT.h"
 #include "llvm/ExecutionEngine/Orc/Shared/ExecutorAddress.h"
 #include "llvm/ExecutionEngine/Orc/ThreadSafeModule.h"
-#include "llvm/LineEditor/LineEditor.h"
 #include "llvm/Support/Error.h"
+#include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/TargetSelect.h"
+#include "llvm/Support/raw_ostream.h"
 
 #include "Dialect/Wasm/IR/WasmDialect.h"
 #include "Dialect/Wasm/Transforms/Passes.h"
 #include "TowerRuntime/TowerRuntime.h"
 
 #include <cstdint>
-#include <filesystem>
 #include <iostream>
 #include <sstream>
 #include <string>
-
-#include "mlir/Support/FileUtilities.h"
-#include "llvm/Support/MemoryBuffer.h"
-#include "llvm/Support/raw_ostream.h"
 
 llvm::orc::ThreadSafeModule getLLVMIRFromStdin() {
   // Register MLIR dialects
@@ -94,6 +86,16 @@ llvm::orc::ThreadSafeModule getLLVMIRFromStdin() {
                                      std::move(llvmContext));
 }
 
+// launchpad handles setup for, calling into, and returning from the generated
+// code.
+void launchpad(S *s, void (*entry)(S *)) {
+  entry(s);
+
+  stop(s);
+  llvm_unreachable("This should be unreachable! If you're here then you forgot "
+                   "to call \"stop\" and ran off the end of the call stack.");
+}
+
 int main(int argc, char *argv[]) {
   // LLVM init
   llvm::InitializeNativeTarget();
@@ -130,9 +132,24 @@ int main(int argc, char *argv[]) {
   auto entryAddr = llvm::cantFail(jit->lookup("entry_shim"));
   void (*entry)(S *) = entryAddr.toPtr<void(S *)>();
 
-  S s{.from = 69, .to = 420, .count = 0, .limit = 2};
+  // contexts for main function and our "thread" that will run fibonacci
+  struct context main_ctx;
+  struct context thread_ctx;
 
-  entry(&s);
+  // setup stack
+  size_t stack_size = 4 * 1024;
+  char *stack = (char *)calloc(stack_size, sizeof(char));
+  // set the link register to our setup/launch function. ARM's RET instruction
+  // will return (aka jump) to whatever function we set here. You can't set the
+  // link register like this from C, but the co-routine start function is
+  // written in assembly.
+  thread_ctx.lr = (uint64_t)launchpad;
 
+  // set stack for thread context
+  thread_ctx.sp = (uint64_t)&stack[stack_size];
+  thread_ctx.fp = (uint64_t)&stack[stack_size];
+
+  S s{.main = &main_ctx, .thread = &thread_ctx, .count = 0, .limit = 2};
+  start(&s, (void *)entry);
   return 0;
 }

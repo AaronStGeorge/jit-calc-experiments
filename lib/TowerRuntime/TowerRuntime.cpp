@@ -7,14 +7,12 @@
 
 extern "C" {
 void dump(S *s) {
-  std::cout << "ding: {from=" << s->from << ", to=" << s->to
-            << ", count=" << s->count << "}" << std::endl;
+  std::cout << "{main=" << s->main << ", thread=" << s->thread
+            << ", count=" << s->count << ", limit=" << s->limit << "}"
+            << std::endl;
 }
 
 void check_swap(S *s) {
-  std::cout << "check_swap: {from=" << s->from << ", to=" << s->to
-            << ", count=" << s->count << ", limit=" << s->limit << "}"
-            << std::endl;
   if (s->count < s->limit) {
     std::cout << "continue" << std::endl;
     return;
