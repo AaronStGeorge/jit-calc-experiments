@@ -1,69 +1,98 @@
 .global _start
 .global _stop
+.global _swap_to_main
+.global _swap_to_thread
 .align 4
 
-_start:
+// Read machine state into context at pointer p_ctx. READ will use register
+// sp_reg to transfer stack pointer; ARM doesn't allow sp register to be read
+// into a memory address, but you can be read into register that's then read
+// into a memory address.
+.macro READ p_ctx, sp_reg
+	MOV \sp_reg, sp
+	STR \sp_reg, [\p_ctx]
+	STR lr,  [\p_ctx, #8]
+	STR fp,  [\p_ctx, #16]
+	STR x19, [\p_ctx, #24]
+	STR x20, [\p_ctx, #32]
+	STR x21, [\p_ctx, #40]
+	STR x22, [\p_ctx, #48]
+	STR x23, [\p_ctx, #56]
+	STR x24, [\p_ctx, #64]
+	STR x25, [\p_ctx, #72]
+	STR x26, [\p_ctx, #80]
+	STR x27, [\p_ctx, #88]
+	STR x28, [\p_ctx, #96]
+.endm
+
+// Write context from pointer p_ctx into machine state. WRITE will use register
+// sp_reg to transfer stack pointer; ARM doesn't allow sp register to be set
+// from a memory address, but you can set it from a register that's set from a
+// memory address.
+.macro WRITE p_ctx, sp_reg
+	LDR \sp_reg, [\p_ctx]
+	MOV sp,  \sp_reg
+	LDR lr,  [\p_ctx, #8]
+	LDR fp,  [\p_ctx, #16]
+	LDR x19, [\p_ctx, #24]
+	LDR x20, [\p_ctx, #32]
+	LDR x21, [\p_ctx, #40]
+	LDR x22, [\p_ctx, #48]
+	LDR x23, [\p_ctx, #56]
+	LDR x24, [\p_ctx, #64]
+	LDR x25, [\p_ctx, #72]
+	LDR x26, [\p_ctx, #80]
+	LDR x27, [\p_ctx, #88]
+	LDR x28, [\p_ctx, #96]
+.endm
+
+// Swap from main into thread.
+.macro SWAP_IN
 	// Load pointer to main context. We're swapping from this context, so we need
 	// to populate the struct with current values of registers.
 	ldr x9,  [x0]
-	// Load pointer to thread context. We're swapping to this context, so the
-	// existing values should be garbage. Whatever called start is responsible for
-	// ensuring that it's populated.
+	// Load pointer to thread context. We're swapping to this context. Whatever
+	// called into this is responsible for ensuring that the context is populated
+	// with reasonable stuff.
 	ldr x10, [x0, #8]
 
-	// You can't store the stack pointer to memory address, but you can store it
-	// to a register then store the resister to a memory address.
-	MOV x11, sp
+	// Dump  current machine state into main context.
+	READ x9, x11
 
-	// Dump machine state into context we're swapping from.
-	STR x11, [x9]
-	STR lr,  [x9, #8]
-	STR fp,  [x9, #16]
-	STR x19, [x9, #24]
-	STR x20, [x9, #32]
-	STR x21, [x9, #40]
-	STR x22, [x9, #48]
-	STR x23, [x9, #56]
-	STR x24, [x9, #64]
-	STR x25, [x9, #72]
-	STR x26, [x9, #80]
-	STR x27, [x9, #88]
-	STR x28, [x9, #96]
+	// Load machine state from thread context.
+	WRITE x10, x11
+.endm
 
-	// Load machine state from context we're swapping to.
-	LDR x11, [x10]
-	MOV sp,  x11
-	LDR lr,  [x10, #8]
-	LDR fp,  [x10, #16]
-	LDR x19, [x10, #24]
-	LDR x20, [x10, #32]
-	LDR x21, [x10, #40]
-	LDR x22, [x10, #48]
-	LDR x23, [x10, #56]
-	LDR x24, [x10, #64]
-	LDR x25, [x10, #72]
-	LDR x26, [x10, #80]
-	LDR x27, [x10, #88]
-	LDR x28, [x10, #96]
+// Swap from thread into main.
+.macro SWAP_OUT
+	// Load pointer to main context. We're swapping to this context.
+	ldr x9,  [x0]
+	// Load pointer to thread context. We're swapping from this context.
+	ldr x10, [x0, #8]
+
+	// Dump current machine state into thread context.
+	READ x10, x11
+
+	// Load machine state from main context.
+	WRITE x9, x11
+.endm
+
+_start:
+	SWAP_IN
+	RET
+
+_swap_to_thread:
+	SWAP_IN
+	RET
+
+_swap_to_main:
+	SWAP_OUT
+	// return false
+	mov x0, #0
 	RET
 
 _stop:
-	// Load pointer to main context. It had better be populated!
-	ldr x10, [x0]
-
-	// Load machine state from main context.
-	LDR x11, [x10]
-	MOV sp,  x11
-	LDR lr,  [x10, #8]
-	LDR fp,  [x10, #16]
-	LDR x19, [x10, #24]
-	LDR x20, [x10, #32]
-	LDR x21, [x10, #40]
-	LDR x22, [x10, #48]
-	LDR x23, [x10, #56]
-	LDR x24, [x10, #64]
-	LDR x25, [x10, #72]
-	LDR x26, [x10, #80]
-	LDR x27, [x10, #88]
-	LDR x28, [x10, #96]
+	SWAP_OUT
+	// return true
+	mov x0, #1
 	RET

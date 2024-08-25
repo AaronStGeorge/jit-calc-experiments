@@ -32,9 +32,19 @@ typedef struct {
 
 extern "C" {
 
-// bool swap(S* s);
+// Intended to be called from main. The passed context should jump into the
+// "launchpad" function that expects the generated entrypoint as an argument.
+bool start(S *s, void (*entry)(S *));
+// Intended to be called from main, swaps into previously paused thread.
+bool swap_to_thread(S* s);
+
+// Intended to be called from the launchpad function, let's the main know thread
+// is done.
 void stop(S *s);
-bool start(S *s, void *...);
+// Intended to be called from thread, let's the main know thread has used up its
+// cycles but it still has work to do.
+void swap_to_main(S* s);
+
 void dump(S *s);
 void check_swap(S *s);
 

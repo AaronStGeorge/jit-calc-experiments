@@ -150,6 +150,10 @@ int main(int argc, char *argv[]) {
   thread_ctx.fp = (uint64_t)&stack[stack_size];
 
   S s{.main = &main_ctx, .thread = &thread_ctx, .count = 0, .limit = 2};
-  start(&s, (void *)entry);
+
+  for (bool done = start(&s, entry); !done; done = swap_to_thread(&s)) {
+    std::cout << "ding" << std::endl;
+  }
+  std::cout << "done" << std::endl;
   return 0;
 }
