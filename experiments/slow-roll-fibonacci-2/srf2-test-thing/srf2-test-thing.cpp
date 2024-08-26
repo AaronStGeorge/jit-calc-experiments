@@ -151,7 +151,8 @@ int main(int argc, char *argv[]) {
 
   S s{.main = &main_ctx, .thread = &thread_ctx, .count = 0, .limit = 2};
 
-  for (bool done = start(&s, entry); !done; done = swap_to_thread(&s)) {
+  for (bool done = start(&s, entry); !done;
+       done = swap(/*from*/ s.main, /*to*/ s.thread)) {
     std::cout << "ding" << std::endl;
   }
   std::cout << "done" << std::endl;

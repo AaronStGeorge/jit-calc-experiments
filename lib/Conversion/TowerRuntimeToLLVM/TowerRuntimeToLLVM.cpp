@@ -51,6 +51,8 @@ LLVM::LLVMStructType getTowerRuntimeContextType(MLIRContext *context) {
                                           {ptrTy, ptrTy, i64Ty, i64Ty});
 }
 
+static constexpr unsigned kMainCtxPosInContextStruct = 0;
+static constexpr unsigned kThreadCtxPosInContextStruct = 1;
 static constexpr unsigned kCountPosInContextStruct = 2;
 static constexpr unsigned kLimitPosInContextStruct = 3;
 class ContextStructBuilder : public StructBuilder {
@@ -65,6 +67,12 @@ public:
     return ContextStructBuilder(load.getResult());
   }
 
+  Value mainCtx(OpBuilder &builder, Location loc) {
+    return extractPtr(builder, loc, kMainCtxPosInContextStruct);
+  }
+  Value threadCtx(OpBuilder &builder, Location loc) {
+    return extractPtr(builder, loc, kThreadCtxPosInContextStruct);
+  }
   Value count(OpBuilder &builder, Location loc) {
     return extractPtr(builder, loc, kCountPosInContextStruct);
   }
@@ -135,23 +143,12 @@ struct LowerCheckSwap : public OpConversionPattern<towerRuntime::CheckSwapOp> {
         op->getLoc(), isOverLimit,
         [&contextStructBuilder, symbolTable = this->symbolTable](OpBuilder &b,
                                                                  Location loc) {
-          func::FuncOp callee =
-              lookupRuntimeFunction(symbolTable, "swap_to_main");
+          func::FuncOp callee = lookupRuntimeFunction(symbolTable, "swap");
 
-          // promote tower runtime context to stack
-          LLVMTypeConverter llvmTypeConverter(b.getContext());
-          LLVM::LLVMPointerType ptrTy =
-              LLVM::LLVMPointerType::get(b.getContext());
-          Value one = b.create<LLVM::ConstantOp>(
-              loc, llvmTypeConverter.convertType(b.getIndexType()),
-              b.getIntegerAttr(b.getIndexType(), 1));
-          Value allocated = b.create<LLVM::AllocaOp>(
-              loc, ptrTy, getTowerRuntimeContextType(b.getContext()), one,
-              /*alignment=*/0);
-          b.create<LLVM::StoreOp>(loc, contextStructBuilder, allocated);
-
-          // call runtime function with pointer to promoted context
-          b.create<func::CallOp>(loc, cast<func::FuncOp>(callee), allocated);
+          // call swap(/*from*/ thread, /*to*/ main);
+          Value threadCtx = contextStructBuilder.threadCtx(b, loc);
+          Value mainCtx = contextStructBuilder.mainCtx(b, loc);
+          b.create<func::CallOp>(loc, callee, ValueRange({threadCtx, mainCtx}));
 
           b.create<scf::YieldOp>(loc);
         });

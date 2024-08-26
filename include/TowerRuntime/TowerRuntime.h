@@ -35,15 +35,13 @@ extern "C" {
 // Intended to be called from main. The passed context should jump into the
 // "launchpad" function that expects the generated entrypoint as an argument.
 bool start(S *s, void (*entry)(S *));
-// Intended to be called from main, swaps into previously paused thread.
-bool swap_to_thread(S* s);
+
+// Swap from context in `from`, to context in `to`
+bool swap(struct context *from, struct context *to);
 
 // Intended to be called from the launchpad function, let's the main know thread
 // is done.
 void stop(S *s);
-// Intended to be called from thread, let's the main know thread has used up its
-// cycles but it still has work to do.
-void swap_to_main(S* s);
 
 void dump(S *s);
 void check_swap(S *s);

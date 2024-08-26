@@ -18,6 +18,6 @@ void check_swap(S *s) {
     return;
   }
   std::cout << "swap" << std::endl;
-  swap_to_main(s);
+  swap(s->thread, s->main);
 }
 } // extern "C"

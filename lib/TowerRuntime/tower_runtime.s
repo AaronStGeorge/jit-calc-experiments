@@ -1,7 +1,6 @@
 .global _start
 .global _stop
-.global _swap_to_main
-.global _swap_to_thread
+.global _swap
 .align 4
 
 // Read machine state into context at pointer p_ctx. READ will use register
@@ -46,8 +45,12 @@
 	LDR x28, [\p_ctx, #96]
 .endm
 
+
+.macro SWAP_OUT
+.endm
+
 // Swap from main into thread.
-.macro SWAP_IN
+_start:
 	// Load pointer to main context. We're swapping from this context, so we need
 	// to populate the struct with current values of registers.
 	ldr x9,  [x0]
@@ -61,10 +64,21 @@
 
 	// Load machine state from thread context.
 	WRITE x10, x11
-.endm
+	RET
+
+_swap:
+	// Dump  current machine state into "from" argument
+	READ x0, x9
+
+	// Load machine state from "to" argument
+	WRITE x1, x9
+
+	// return false
+	mov x0, #0
+	RET
 
 // Swap from thread into main.
-.macro SWAP_OUT
+_stop:
 	// Load pointer to main context. We're swapping to this context.
 	ldr x9,  [x0]
 	// Load pointer to thread context. We're swapping from this context.
@@ -75,24 +89,6 @@
 
 	// Load machine state from main context.
 	WRITE x9, x11
-.endm
-
-_start:
-	SWAP_IN
-	RET
-
-_swap_to_thread:
-	SWAP_IN
-	RET
-
-_swap_to_main:
-	SWAP_OUT
-	// return false
-	mov x0, #0
-	RET
-
-_stop:
-	SWAP_OUT
 	// return true
 	mov x0, #1
 	RET
