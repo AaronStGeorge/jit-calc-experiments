@@ -1,14 +1,18 @@
+#include "mlir-c/IR.h"
 #include "mlir/Conversion/ConvertToLLVM/ToLLVMInterface.h"
 #include "mlir/Conversion/LLVMCommon/ConversionTarget.h"
 #include "mlir/Conversion/LLVMCommon/MemRefBuilder.h"
 #include "mlir/Conversion/LLVMCommon/TypeConverter.h"
 #include "mlir/Conversion/LLVMCommon/VectorPattern.h"
 #include "mlir/Dialect/Arith/IR/Arith.h"
+#include "mlir/Dialect/Bufferization/IR/BufferizableOpInterface.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/Dialect/Func/Transforms/FuncConversions.h"
 #include "mlir/Dialect/LLVMIR/LLVMAttrs.h"
 #include "mlir/Dialect/LLVMIR/LLVMDialect.h"
 #include "mlir/Dialect/LLVMIR/LLVMTypes.h"
+#include "mlir/Dialect/SCF/IR/SCF.h"
+#include "mlir/IR/Builders.h"
 #include "mlir/IR/BuiltinAttributes.h"
 #include "mlir/IR/MLIRContext.h"
 #include "mlir/IR/SymbolTable.h"
@@ -19,6 +23,7 @@
 #include "mlir/Transforms/DialectConversion.h"
 
 #include "llvm/ADT/StringRef.h"
+#include "llvm/Support/Casting.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/FormatVariadic.h"
@@ -47,6 +52,7 @@ LLVM::LLVMStructType getTowerRuntimeContextType(MLIRContext *context) {
 }
 
 static constexpr unsigned kCountPosInContextStruct = 2;
+static constexpr unsigned kLimitPosInContextStruct = 3;
 class ContextStructBuilder : public StructBuilder {
 public:
   /// Construct a helper for the given complex number value.
@@ -65,7 +71,25 @@ public:
   void setCount(OpBuilder &builder, Location loc, Value real) {
     setPtr(builder, loc, kCountPosInContextStruct, real);
   }
+  Value limit(OpBuilder &builder, Location loc) {
+    return extractPtr(builder, loc, kLimitPosInContextStruct);
+  }
+  void setLimit(OpBuilder &builder, Location loc, Value real) {
+    setPtr(builder, loc, kLimitPosInContextStruct, real);
+  }
 };
+
+func::FuncOp lookupRuntimeFunction(SymbolTable symbolTable,
+                                   StringRef calleeName) {
+  auto callee = symbolTable.lookup(calleeName);
+  if (!callee || !isa<func::FuncOp>(callee)) {
+    llvm_unreachable(
+        llvm::formatv("couldn't find runtime function named {0}", calleeName)
+            .str()
+            .c_str());
+  }
+  return cast<func::FuncOp>(callee);
+}
 
 struct LowerIncrement
     : public OpConversionPattern<towerRuntime::IncrementCountOp> {
@@ -87,6 +111,57 @@ struct LowerIncrement
     rewriter.replaceOp(op, mlir::Value(contextStructBuilder));
     return success();
   }
+};
+
+struct LowerCheckSwap : public OpConversionPattern<towerRuntime::CheckSwapOp> {
+  explicit LowerCheckSwap(const TypeConverter &typeConverter,
+                          MLIRContext *context, SymbolTable symbolTable,
+                          PatternBenefit benefit = 1)
+      : OpConversionPattern<towerRuntime::CheckSwapOp>(typeConverter, context,
+                                                       benefit),
+        symbolTable(symbolTable) {}
+
+  LogicalResult
+  matchAndRewrite(towerRuntime::CheckSwapOp op, OpAdaptor adaptor,
+                  ConversionPatternRewriter &rewriter) const override {
+    ContextStructBuilder contextStructBuilder(adaptor.getInput());
+    Value count = contextStructBuilder.count(rewriter, op->getLoc());
+    Value limit = contextStructBuilder.limit(rewriter, op->getLoc());
+
+    Value isOverLimit = rewriter.create<arith::CmpIOp>(
+        op.getLoc(), arith::CmpIPredicate::uge, count, limit);
+
+    rewriter.create<scf::IfOp>(
+        op->getLoc(), isOverLimit,
+        [&contextStructBuilder, symbolTable = this->symbolTable](OpBuilder &b,
+                                                                 Location loc) {
+          func::FuncOp callee =
+              lookupRuntimeFunction(symbolTable, "swap_to_main");
+
+          // promote tower runtime context to stack
+          LLVMTypeConverter llvmTypeConverter(b.getContext());
+          LLVM::LLVMPointerType ptrTy =
+              LLVM::LLVMPointerType::get(b.getContext());
+          Value one = b.create<LLVM::ConstantOp>(
+              loc, llvmTypeConverter.convertType(b.getIndexType()),
+              b.getIntegerAttr(b.getIndexType(), 1));
+          Value allocated = b.create<LLVM::AllocaOp>(
+              loc, ptrTy, getTowerRuntimeContextType(b.getContext()), one,
+              /*alignment=*/0);
+          b.create<LLVM::StoreOp>(loc, contextStructBuilder, allocated);
+
+          // call runtime function with pointer to promoted context
+          b.create<func::CallOp>(loc, cast<func::FuncOp>(callee), allocated);
+
+          b.create<scf::YieldOp>(loc);
+        });
+
+    rewriter.eraseOp(op);
+    return success();
+  }
+
+private:
+  SymbolTable symbolTable;
 };
 
 struct LowerLoad : public OpConversionPattern<towerRuntime::LoadOp> {
@@ -114,13 +189,7 @@ struct ToRuntimeCall : public OpConversionPattern<OpTy> {
   LogicalResult
   matchAndRewrite(OpTy op, typename OpTy::Adaptor adaptor,
                   ConversionPatternRewriter &rewriter) const override {
-    auto callee = symbolTable.lookup(calleeName);
-    if (!callee || !isa<func::FuncOp>(callee)) {
-      llvm_unreachable(
-          llvm::formatv("couldn't find runtime function named {0}", calleeName)
-              .str()
-              .c_str());
-    }
+    func::FuncOp callee = lookupRuntimeFunction(symbolTable, calleeName);
 
     // promote tower runtime context to stack
     LLVMTypeConverter llvmTypeConverter(rewriter.getContext());
@@ -134,8 +203,7 @@ struct ToRuntimeCall : public OpConversionPattern<OpTy> {
     rewriter.create<LLVM::StoreOp>(op.getLoc(), adaptor.getInput(), allocated);
 
     // call runtime function with pointer to promoted context
-    rewriter.replaceOpWithNewOp<func::CallOp>(op, cast<func::FuncOp>(callee),
-                                              allocated);
+    rewriter.replaceOpWithNewOp<func::CallOp>(op, callee, allocated);
     return success();
   }
 
@@ -164,8 +232,7 @@ struct TowerRuntimeToLLVMConversionPass
     RewritePatternSet patterns(context);
     patterns.add<ToRuntimeCall<towerRuntime::DumpContextOp>>(
         typeConverter, context, symbolTable, "dump");
-    patterns.add<ToRuntimeCall<towerRuntime::CheckSwapOp>>(
-        typeConverter, context, symbolTable, "check_swap");
+    patterns.add<LowerCheckSwap>(typeConverter, context, symbolTable);
     patterns.add<LowerIncrement>(typeConverter, context);
     patterns.add<LowerLoad>(typeConverter, context);
 
@@ -184,6 +251,7 @@ struct TowerRuntimeToLLVMConversionPass
     });
     target.addLegalDialect<LLVM::LLVMDialect>();
     target.addLegalDialect<arith::ArithDialect>();
+    target.addLegalDialect<scf::SCFDialect>();
 
     if (failed(applyPartialConversion(module, target, std::move(patterns))))
       signalPassFailure();

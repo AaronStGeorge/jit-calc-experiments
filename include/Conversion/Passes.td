@@ -20,7 +20,10 @@ def TowerRuntimeToLLVMConversionPass : Pass<"convert-tower-runtime-to-llvm", "Mo
   let description = [{
     This pass converts supported TowerRuntime ops to LLVM dialect instructions.
   }];
-  let dependentDialects = ["LLVM::LLVMDialect"];
+  let dependentDialects = [
+    "LLVM::LLVMDialect",
+    "scf::SCFDialect",
+  ];
 }
 
 #endif // JIT_CALC_EXPERIMENTS_CONVERSION_PASSES

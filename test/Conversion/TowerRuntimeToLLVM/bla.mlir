@@ -3,6 +3,7 @@
 
 func.func private @dump(%t: !llvm.ptr) -> ()
 func.func private @check_swap(%t: !llvm.ptr) -> ()
+func.func private @swap_to_main(%t: !llvm.ptr) -> ()
 
 func.func @entry(%arg0 : !tower_runtime.ctx) -> () {
 	tower_runtime.dump %arg0 : !tower_runtime.ctx
