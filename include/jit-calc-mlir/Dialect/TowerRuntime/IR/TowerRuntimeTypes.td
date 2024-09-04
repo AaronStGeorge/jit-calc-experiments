@@ -10,7 +10,7 @@
 #define TOWERRUNTIME_TYPES
 
 include "mlir/IR/AttrTypeBase.td"
-include "Dialect/TowerRuntime/IR/TowerRuntimeDialect.td"
+include "jit-calc-mlir/Dialect/TowerRuntime/IR/TowerRuntimeDialect.td"
 
 //===----------------------------------------------------------------------===//
 // TowerRuntime type definitions

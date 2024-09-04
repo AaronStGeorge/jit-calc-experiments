@@ -6,9 +6,9 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "Dialect/TowerRuntime/IR/TowerRuntimeTypes.h"
+#include "jit-calc-mlir/Dialect/TowerRuntime/IR/TowerRuntimeTypes.h"
 
-#include "Dialect/TowerRuntime/IR/TowerRuntimeDialect.h"
+#include "jit-calc-mlir/Dialect/TowerRuntime/IR/TowerRuntimeDialect.h"
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/DialectImplementation.h"
 #include "llvm/ADT/TypeSwitch.h"
@@ -16,11 +16,11 @@
 using namespace mlir::towerRuntime;
 
 #define GET_TYPEDEF_CLASSES
-#include "Dialect/TowerRuntime/IR/TowerRuntimeOpsTypes.cpp.inc"
+#include "jit-calc-mlir/Dialect/TowerRuntime/IR/TowerRuntimeOpsTypes.cpp.inc"
 
 void TowerRuntimeDialect::registerTypes() {
   addTypes<
 #define GET_TYPEDEF_LIST
-#include "Dialect/TowerRuntime/IR/TowerRuntimeOpsTypes.cpp.inc"
+#include "jit-calc-mlir/Dialect/TowerRuntime/IR/TowerRuntimeOpsTypes.cpp.inc"
       >();
 }

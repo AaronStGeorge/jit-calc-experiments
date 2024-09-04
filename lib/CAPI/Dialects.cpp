@@ -6,9 +6,9 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "Wasm-c/Dialects.h"
+#include "jit-calc-mlir-c/Dialect/Wasm/Dialects.h"
 
-#include "Dialect/Wasm/IR/WasmDialect.h"
+#include "jit-calc-mlir/Dialect/Wasm/IR/WasmDialect.h"
 #include "mlir/CAPI/Registration.h"
 
 MLIR_DEFINE_CAPI_DIALECT_REGISTRATION(Wasm, wasm, mlir::wasm::WasmDialect)

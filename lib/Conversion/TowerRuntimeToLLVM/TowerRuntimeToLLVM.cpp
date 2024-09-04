@@ -28,16 +28,16 @@
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/FormatVariadic.h"
 
-#include "Conversion/TowerRuntimeToLLVM/TowerRuntimeToLLVM.h"
-#include "Dialect/TowerRuntime/IR/TowerRuntimeDialect.h"
-#include "Dialect/TowerRuntime/IR/TowerRuntimeOps.h"
-#include "Dialect/TowerRuntime/IR/TowerRuntimeTypes.h"
+#include "jit-calc-mlir/Conversion/TowerRuntimeToLLVM/TowerRuntimeToLLVM.h"
+#include "jit-calc-mlir/Dialect/TowerRuntime/IR/TowerRuntimeDialect.h"
+#include "jit-calc-mlir/Dialect/TowerRuntime/IR/TowerRuntimeOps.h"
+#include "jit-calc-mlir/Dialect/TowerRuntime/IR/TowerRuntimeTypes.h"
 
 #define DEBUG_TYPE "taco"
 
 namespace mlir {
 #define GEN_PASS_DEF_TOWERRUNTIMETOLLVMCONVERSIONPASS
-#include "Conversion/Passes.h.inc"
+#include "jit-calc-mlir/Conversion/Passes.h.inc"
 } // namespace mlir
 
 using namespace mlir;

@@ -11,7 +11,7 @@ class RewritePatternSet;
 class Pass;
 
 #define GEN_PASS_DECL_TOWERRUNTIMETOLLVMCONVERSIONPASS
-#include "Conversion/Passes.h.inc"
+#include "jit-calc-mlir/Conversion/Passes.h.inc"
 
 } // namespace mlir
 

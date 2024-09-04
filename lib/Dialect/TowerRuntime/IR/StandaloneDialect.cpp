@@ -6,14 +6,14 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "Dialect/TowerRuntime/IR/TowerRuntimeDialect.h"
-#include "Dialect/TowerRuntime/IR/TowerRuntimeOps.h"
-#include "Dialect/TowerRuntime/IR/TowerRuntimeTypes.h"
+#include "jit-calc-mlir/Dialect/TowerRuntime/IR/TowerRuntimeDialect.h"
+#include "jit-calc-mlir/Dialect/TowerRuntime/IR/TowerRuntimeOps.h"
+#include "jit-calc-mlir/Dialect/TowerRuntime/IR/TowerRuntimeTypes.h"
 
 using namespace mlir;
 using namespace mlir::towerRuntime;
 
-#include "Dialect/TowerRuntime/IR/TowerRuntimeOpsDialect.cpp.inc"
+#include "jit-calc-mlir/Dialect/TowerRuntime/IR/TowerRuntimeOpsDialect.cpp.inc"
 
 //===----------------------------------------------------------------------===//
 // Standalone dialect.
@@ -22,7 +22,7 @@ using namespace mlir::towerRuntime;
 void TowerRuntimeDialect::initialize() {
   addOperations<
 #define GET_OP_LIST
-#include "Dialect/TowerRuntime/IR/TowerRuntimeOps.cpp.inc"
+#include "jit-calc-mlir/Dialect/TowerRuntime/IR/TowerRuntimeOps.cpp.inc"
       >();
   registerTypes();
 }

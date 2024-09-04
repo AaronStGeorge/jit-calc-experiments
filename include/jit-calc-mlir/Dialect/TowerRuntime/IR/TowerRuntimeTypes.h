@@ -5,6 +5,6 @@
 #include "mlir/IR/BuiltinTypes.h"
 
 #define GET_TYPEDEF_CLASSES
-#include "Dialect/TowerRuntime/IR/TowerRuntimeOpsTypes.h.inc"
+#include "jit-calc-mlir/Dialect/TowerRuntime/IR/TowerRuntimeOpsTypes.h.inc"
 
 #endif // TOWERRUNTIME_TOWERRUNTIMETYPES_H

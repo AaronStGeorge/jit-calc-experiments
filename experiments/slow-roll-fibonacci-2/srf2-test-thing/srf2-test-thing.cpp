@@ -25,9 +25,9 @@
 #include "llvm/Support/TargetSelect.h"
 #include "llvm/Support/raw_ostream.h"
 
-#include "Dialect/Wasm/IR/WasmDialect.h"
-#include "Dialect/Wasm/Transforms/Passes.h"
 #include "TowerRuntime/TowerRuntime.h"
+#include "jit-calc-mlir/Dialect/Wasm/IR/WasmDialect.h"
+#include "jit-calc-mlir/Dialect/Wasm/Transforms/Passes.h"
 
 #include <cstdint>
 #include <iostream>

@@ -1,7 +1,7 @@
 #ifndef WASM_OPS
 #define WASM_OPS
 
-include "Dialect/Wasm/IR/WasmDialect.td"
+include "jit-calc-mlir/Dialect/Wasm/IR/WasmDialect.td"
 include "mlir/Interfaces/InferTypeOpInterface.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
 

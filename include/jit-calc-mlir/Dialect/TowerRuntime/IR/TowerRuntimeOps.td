@@ -1,7 +1,7 @@
 #ifndef TOWERRUNTIME_OPS
 #define TOWERRUNTIME_OPS
 
-include "Dialect/TowerRuntime/IR/TowerRuntimeTypes.td"
+include "jit-calc-mlir/Dialect/TowerRuntime/IR/TowerRuntimeTypes.td"
 include "mlir/Interfaces/InferTypeOpInterface.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
 include "mlir/Dialect/LLVMIR/LLVMTypes.td"

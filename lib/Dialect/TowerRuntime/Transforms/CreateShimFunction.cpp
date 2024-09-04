@@ -2,8 +2,8 @@
 #include "mlir/IR/BuiltinOps.h"
 #include "mlir/IR/SymbolTable.h"
 
-#include "Dialect/TowerRuntime/IR/TowerRuntimeOps.h"
-#include "Dialect/TowerRuntime/Transforms/Passes.h"
+#include "jit-calc-mlir/Dialect/TowerRuntime/IR/TowerRuntimeOps.h"
+#include "jit-calc-mlir/Dialect/TowerRuntime/Transforms/Passes.h"
 #include "mlir/Support/LogicalResult.h"
 
 #include "llvm/Support/Debug.h"
@@ -14,7 +14,7 @@
 #define DEBUG_TYPE "taco"
 namespace mlir::towerRuntime {
 #define GEN_PASS_DEF_SHIMFUNCTION
-#include "Dialect/TowerRuntime/Transforms/Passes.h.inc"
+#include "jit-calc-mlir/Dialect/TowerRuntime/Transforms/Passes.h.inc"
 
 class CreateShimFunction : public impl::ShimFunctionBase<CreateShimFunction> {
 public:

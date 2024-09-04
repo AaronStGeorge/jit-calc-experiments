@@ -1,10 +1,10 @@
-#include "Dialect/Wasm/IR/WasmDialect.h"
-#include "Dialect/Wasm/IR/WasmOps.h"
+#include "jit-calc-mlir/Dialect/Wasm/IR/WasmDialect.h"
+#include "jit-calc-mlir/Dialect/Wasm/IR/WasmOps.h"
 
 using namespace mlir;
 using namespace mlir::wasm;
 
-#include "Dialect/Wasm/IR/WasmOpsDialect.cpp.inc"
+#include "jit-calc-mlir/Dialect/Wasm/IR/WasmOpsDialect.cpp.inc"
 
 //===----------------------------------------------------------------------===//
 // Wasm dialect.
@@ -13,6 +13,6 @@ using namespace mlir::wasm;
 void WasmDialect::initialize() {
   addOperations<
 #define GET_OP_LIST
-#include "Dialect/Wasm/IR/WasmOps.cpp.inc"
+#include "jit-calc-mlir/Dialect/Wasm/IR/WasmOps.cpp.inc"
       >();
 }

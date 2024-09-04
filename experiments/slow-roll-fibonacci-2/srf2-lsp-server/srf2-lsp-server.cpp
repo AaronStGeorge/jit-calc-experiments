@@ -6,8 +6,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "Dialect/TowerRuntime/IR/TowerRuntimeDialect.h"
-#include "Dialect/Wasm/IR/WasmDialect.h"
+#include "jit-calc-mlir/Dialect/TowerRuntime/IR/TowerRuntimeDialect.h"
+#include "jit-calc-mlir/Dialect/Wasm/IR/WasmDialect.h"
 #include "mlir/IR/Dialect.h"
 #include "mlir/IR/MLIRContext.h"
 #include "mlir/InitAllDialects.h"

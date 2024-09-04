@@ -9,14 +9,14 @@
 #ifndef JIT_CALC_EXPERIMENTS_CONVERSION_PASSES_H
 #define JIT_CALC_EXPERIMENTS_CONVERSION_PASSES_H
 
-#include "Conversion/TowerRuntimeToLLVM/TowerRuntimeToLLVM.h"
+#include "jit-calc-mlir/Conversion/TowerRuntimeToLLVM/TowerRuntimeToLLVM.h"
 
 namespace mlir {
 namespace jitCalcExperiments {
 
 /// Generate the code for registering conversion passes.
 #define GEN_PASS_REGISTRATION
-#include "Conversion/Passes.h.inc"
+#include "jit-calc-mlir/Conversion/Passes.h.inc"
 
 } // namespace jitCalcExperiments
 } // namespace mlir

@@ -1,5 +1,5 @@
-#include "Conversion/TowerRuntimeToLLVM/TowerRuntimeToLLVM.h"
-#include "Dialect/TowerRuntime/Transforms/Passes.h"
+#include "jit-calc-mlir/Conversion/TowerRuntimeToLLVM/TowerRuntimeToLLVM.h"
+#include "jit-calc-mlir/Dialect/TowerRuntime/Transforms/Passes.h"
 #include "mlir/Dialect/Arith/IR/Arith.h"
 #include "mlir/IR/Dialect.h"
 #include "mlir/IR/MLIRContext.h"
@@ -14,10 +14,10 @@
 #include "llvm/Support/SourceMgr.h"
 #include "llvm/Support/ToolOutputFile.h"
 
-#include "Conversion/Passes.h"
-#include "Dialect/TowerRuntime/IR/TowerRuntimeDialect.h"
-#include "Dialect/Wasm/IR/WasmDialect.h"
-#include "Dialect/Wasm/Transforms/Passes.h"
+#include "jit-calc-mlir/Conversion/Passes.h"
+#include "jit-calc-mlir/Dialect/TowerRuntime/IR/TowerRuntimeDialect.h"
+#include "jit-calc-mlir/Dialect/Wasm/IR/WasmDialect.h"
+#include "jit-calc-mlir/Dialect/Wasm/Transforms/Passes.h"
 #include "mlir/InitAllExtensions.h"
 
 int main(int argc, char **argv) {

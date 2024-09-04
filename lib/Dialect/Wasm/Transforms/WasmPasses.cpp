@@ -1,4 +1,4 @@
-#include "Dialect/Wasm/IR/WasmOps.h"
+#include "jit-calc-mlir/Dialect/Wasm/IR/WasmOps.h"
 #include "mlir/Dialect/Arith/IR/Arith.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/IR/PatternMatch.h"
@@ -6,11 +6,11 @@
 #include "mlir/Support/LogicalResult.h"
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
 
-#include "Dialect/Wasm/Transforms/Passes.h"
+#include "jit-calc-mlir/Dialect/Wasm/Transforms/Passes.h"
 
 namespace mlir::wasm {
 #define GEN_PASS_DEF_LOWERWASM
-#include "Dialect/Wasm/Transforms/Passes.h.inc"
+#include "jit-calc-mlir/Dialect/Wasm/Transforms/Passes.h.inc"
 
 namespace {
 
