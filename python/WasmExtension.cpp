@@ -1,4 +1,4 @@
-#include "jit-calc-mlir-c/Dialect/Wasm/Dialects.h"
+#include "jit-calc-mlir-c/Dialect/Wasm.h"
 #include "mlir/Bindings/Python/PybindAdaptors.h"
 
 using namespace mlir::python::adaptors;

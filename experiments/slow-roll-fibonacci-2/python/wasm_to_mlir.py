@@ -5,9 +5,9 @@ from dataclasses import dataclass, field
 from typing import List, Optional, Dict, Callable, Any
 
 import wasm
-import mlir_wasm.ir as mlir
-import mlir_wasm.extras.types as T
-from mlir_wasm.dialects import arith, cf, func, memref, wasm as wasm_d
+import jitcalc.ir as mlir
+import jitcalc.extras.types as T
+from jitcalc.dialects import arith, cf, func, memref, wasm as wasm_d
 
 
 def is_terminator(instruction: wasm.Instruction) -> bool:
