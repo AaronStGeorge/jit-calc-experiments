@@ -7,7 +7,7 @@ from typing import List, Optional, Dict, Callable, Any
 import wasm
 import jitcalc.ir as mlir
 import jitcalc.extras.types as T
-from jitcalc.dialects import arith, cf, func, memref, wasm as wasm_d
+from jitcalc.dialects import arith, cf, func, memref, tower_runtime, wasm as wasm_d
 
 
 def is_terminator(instruction: wasm.Instruction) -> bool:
@@ -359,6 +359,7 @@ def compile_wasm(wasm_module: wasm.Module) -> mlir.Module:
     expected to be called within a with Context block
     """
     wasm_d.register_dialect()
+    tower_runtime.register_dialect()
     wasm_to_mlir_type: Dict[str, mlir.Type] = {"i32": T.i32()}
 
     with mlir.Location.unknown() as loc:
