@@ -15,10 +15,10 @@ can build them on the fly!
 
 This is hot stuff! Using LLVM, we can cut the calculator's binary size down by
 *dozens* of bytes, and we'll only need to pack a few gigs of compiler code in
-there to do so! When the user requests some calculation be done, we can compile
-their request in *milliseconds*. A computer requires a single digit number of
-nanoseconds to execute a pre-compiled arithmetic instruction. Our users won't
-have to slog through that! This is an excellent trade.
+there to do so! In a conventional calculater program, a user would have to wait a single digit number of
+nanoseconds to execute a pre-compiled arithmetic instruction. But _our_ users won't
+have to slog through that!  When the user requests some calculation be done, we can compile
+their request in *milliseconds*.  This is an excellent trade.
 
 ----
 
