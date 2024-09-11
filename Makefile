@@ -1,2 +1,2 @@
-format:
+format-cpp:
 	find . -type f -name "*.cpp" -o -name "*.h" | xargs clang-format -i

@@ -25,7 +25,8 @@ PYBIND11_MODULE(_towerRuntimeDialect, m) {
   // ContextType
   //===--------------------------------------------------------------------===//
 
-  mlir_type_subclass(towerRuntimeM, "ContextType", mlirTypeIsATowerRuntimeContextType)
+  mlir_type_subclass(towerRuntimeM, "ContextType",
+                     mlirTypeIsATowerRuntimeContextType)
       .def_classmethod(
           "get",
           [](py::object cls, MlirContext context) {
@@ -36,7 +37,5 @@ PYBIND11_MODULE(_towerRuntimeDialect, m) {
             }
             return cls(type);
           },
-          "cls"_a, py::kw_only(),
-          "context"_a = py::none());
-
+          "cls"_a, py::kw_only(), "context"_a = py::none());
 }

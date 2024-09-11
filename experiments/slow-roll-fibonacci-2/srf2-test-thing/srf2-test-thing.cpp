@@ -88,13 +88,24 @@ llvm::orc::ThreadSafeModule getLLVMIRFromStdin() {
 
 // launchpad handles setup for, calling into, and returning from the generated
 // code.
-void launchpad(S *s, void (*entry)(S *)) {
-  entry(s);
+void launchpad(TowerRuntimeContext *ctx,
+               void (*entry)(TowerRuntimeContext *, void *, void *), void *in,
+               void *out) {
+  entry(ctx, in, out);
 
-  stop(s);
+  stop(ctx);
   llvm_unreachable("This should be unreachable! If you're here then you forgot "
                    "to call \"stop\" and ran off the end of the call stack.");
 }
+
+struct In {
+  int a;
+  int b;
+};
+
+struct Out {
+  int result;
+};
 
 int main(int argc, char *argv[]) {
   // LLVM init
@@ -129,12 +140,13 @@ int main(int argc, char *argv[]) {
   llvm::cantFail(jit->addIRModule(getLLVMIRFromStdin()));
 
   // grab address of add function
-  auto entryAddr = llvm::cantFail(jit->lookup("entry_shim"));
-  void (*entry)(S *) = entryAddr.toPtr<void(S *)>();
+  auto entryAddr = llvm::cantFail(jit->lookup("add_shim"));
+  void (*entry)(TowerRuntimeContext *, void *, void *) =
+      entryAddr.toPtr<void(TowerRuntimeContext *, void *, void *)>();
 
   // contexts for main function and our "thread" that will run fibonacci
-  struct context main_ctx;
-  struct context thread_ctx;
+  struct MachineState main_ctx;
+  struct MachineState thread_ctx;
 
   // setup stack
   size_t stack_size = 4 * 1024;
@@ -149,12 +161,19 @@ int main(int argc, char *argv[]) {
   thread_ctx.sp = (uint64_t)&stack[stack_size];
   thread_ctx.fp = (uint64_t)&stack[stack_size];
 
-  S s{.main = &main_ctx, .thread = &thread_ctx, .count = 0, .limit = 2};
+  TowerRuntimeContext ctx{
+      .main = &main_ctx,
+      .thread = &thread_ctx,
+      .count = 0,
+      .limit = 0,
+  };
 
-  for (bool done = start(&s, entry); !done;
-       done = swap(/*from*/ s.main, /*to*/ s.thread)) {
+  In in = {.a = 400, .b = 20};
+  Out out = {.result = -1};
+  for (bool done = start(&ctx, entry, &in, &out); !done;
+       done = swap(/*from*/ ctx.main, /*to*/ ctx.thread)) {
     std::cout << "ding" << std::endl;
   }
-  std::cout << "done" << std::endl;
+  std::cout << "done: " << out.result << std::endl;
   return 0;
 }

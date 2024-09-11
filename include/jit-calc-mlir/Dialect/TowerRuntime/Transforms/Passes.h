@@ -3,6 +3,7 @@
 
 #include "jit-calc-mlir/Dialect/TowerRuntime/IR/TowerRuntimeDialect.h"
 #include "jit-calc-mlir/Dialect/TowerRuntime/IR/TowerRuntimeOps.h"
+#include "mlir/Dialect/LLVMIR/LLVMDialect.h"
 #include "mlir/Pass/Pass.h"
 
 namespace mlir {

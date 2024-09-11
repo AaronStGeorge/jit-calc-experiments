@@ -428,10 +428,13 @@ def compile_wasm(wasm_module: wasm.Module) -> mlir.Module:
 
         # compile defined functions
         for wasm_func in defined_functions:
+            # stitch in additional first argument of type tower_runtime.ctx
+            input_types = [tower_runtime.ContextType.get()] + wasm_func.inputs
             mlir_func = func.FuncOp(
                 name=wasm_func.name,
                 type=mlir.FunctionType.get(
-                    inputs=wasm_func.inputs, results=wasm_func.results
+                    inputs=input_types,
+                    results=wasm_func.results,
                 ),
                 ip=ip,
             )
@@ -439,6 +442,7 @@ def compile_wasm(wasm_module: wasm.Module) -> mlir.Module:
             index_ip = mlir.InsertionPoint.at_block_begin(entry_block)
             indices = [arith.ConstantOp.create_index(0, ip=index_ip)]
             ip = mlir.InsertionPoint(entry_block)
+            ctx_argument, *function_arguments = mlir_func.entry_block.arguments
             # Create stack storage and store all local variables for a function.
             #
             # From the wasm spec: "The index space for locals is only accessible
@@ -453,9 +457,7 @@ def compile_wasm(wasm_module: wasm.Module) -> mlir.Module:
             # instruction. MLIR's mem2reg pass should hopefully clean everything up
             # later.
             wasm_locals: List[mlir.Value] = []
-            for arg, mlir_type in zip(
-                mlir_func.entry_block.arguments, wasm_func.inputs
-            ):
+            for arg, mlir_type in zip(function_arguments, wasm_func.inputs):
                 stack_allocation = memref.alloca(T.memref(1, mlir_type), [], [], ip=ip)
                 memref.store(arg, stack_allocation, indices[0], ip=ip)
                 wasm_locals.append(stack_allocation)
@@ -469,6 +471,7 @@ def compile_wasm(wasm_module: wasm.Module) -> mlir.Module:
                     )
                     wasm_locals.append(stack_allocation)
 
+            # translate the instructions
             translator = Translator(
                 wasm_locals=wasm_locals,
                 block=entry_block,
@@ -480,8 +483,14 @@ def compile_wasm(wasm_module: wasm.Module) -> mlir.Module:
                 # definitions in the same index space."
                 functions=imported_functions + defined_functions,
             )
+            last_context = ctx_argument
             for instr in wasm_func.code.expr.instructions:
+                last_context = tower_runtime.increment_count(
+                    last_context, ip=translator.ip
+                )
                 instr.accept(translator)
+                tower_runtime.dump(last_context, ip=translator.ip)
+                tower_runtime.check_swap(last_context, ip=translator.ip)
 
             # add return if there is one
             if wasm_func.results:

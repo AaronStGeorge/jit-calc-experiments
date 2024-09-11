@@ -1,21 +1,20 @@
-#include "mlir-c/IR.h"
 #include "mlir/Conversion/ConvertToLLVM/ToLLVMInterface.h"
-#include "mlir/Conversion/LLVMCommon/ConversionTarget.h"
 #include "mlir/Conversion/LLVMCommon/MemRefBuilder.h"
 #include "mlir/Conversion/LLVMCommon/TypeConverter.h"
-#include "mlir/Conversion/LLVMCommon/VectorPattern.h"
 #include "mlir/Dialect/Arith/IR/Arith.h"
 #include "mlir/Dialect/Bufferization/IR/BufferizableOpInterface.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/Dialect/Func/Transforms/FuncConversions.h"
-#include "mlir/Dialect/LLVMIR/LLVMAttrs.h"
 #include "mlir/Dialect/LLVMIR/LLVMDialect.h"
 #include "mlir/Dialect/LLVMIR/LLVMTypes.h"
 #include "mlir/Dialect/SCF/IR/SCF.h"
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/BuiltinAttributes.h"
+#include "mlir/IR/BuiltinOps.h"
 #include "mlir/IR/MLIRContext.h"
+#include "mlir/IR/PatternMatch.h"
 #include "mlir/IR/SymbolTable.h"
+#include "mlir/IR/TypeRange.h"
 #include "mlir/IR/TypeUtilities.h"
 #include "mlir/IR/Value.h"
 #include "mlir/IR/ValueRange.h"
@@ -209,14 +208,48 @@ private:
   StringRef calleeName;
 };
 
+struct RuntimeFunction {
+  StringRef name;
+  TypeRange inputs;
+  TypeRange results;
+};
+
+// Add prototypes for runtime functions defined in C++ (or whatever). Example:
+//   func.func private @swap(!llvm.ptr, !llvm.ptr) -> (i1)
+void addRuntimeFunctionPrototypes(
+    MLIRContext *context, ModuleOp module,
+    std::vector<RuntimeFunction> runtimeFunctions) {
+  mlir::OpBuilder builder(context);
+  Location loc = builder.getUnknownLoc();
+  builder.setInsertionPointToStart(&module->getRegion(0).front());
+
+  for (auto &runtimeFunction : runtimeFunctions) {
+    auto functionType = FunctionType::get(context, runtimeFunction.inputs,
+                                          runtimeFunction.results);
+    auto functionOp =
+        builder.create<func::FuncOp>(loc, runtimeFunction.name, functionType);
+    functionOp.setPrivate();
+  }
+}
+} // namespace
+
 struct TowerRuntimeToLLVMConversionPass
     : public impl::TowerRuntimeToLLVMConversionPassBase<
           TowerRuntimeToLLVMConversionPass> {
   using Base::Base;
 
   void runOnOperation() override {
-    auto module = getOperation();
-    auto context = module.getContext();
+    ModuleOp module = getOperation();
+    MLIRContext *context = module.getContext();
+
+    auto ptrTy = LLVM::LLVMPointerType::get(context);
+    auto i1Ty = IntegerType::get(context, 1);
+    addRuntimeFunctionPrototypes(
+        context, module,
+        {
+            {.name = "swap", .inputs = {ptrTy, ptrTy}, .results = {i1Ty}},
+            {.name = "dump", .inputs = {ptrTy}, .results = {}},
+        });
 
     TypeConverter typeConverter;
     typeConverter.addConversion([](Type type) { return type; });
@@ -233,11 +266,12 @@ struct TowerRuntimeToLLVMConversionPass
     patterns.add<LowerIncrement>(typeConverter, context);
     patterns.add<LowerLoad>(typeConverter, context);
 
-    // Ensure function signatures and alls are converted
+    // Ensure function signatures and all call ops are converted
     populateCallOpTypeConversionPattern(patterns, typeConverter);
     populateFunctionOpInterfaceTypeConversionPattern<func::FuncOp>(
         patterns, typeConverter);
 
+    //
     ConversionTarget target(*context);
     target.addDynamicallyLegalOp<func::FuncOp>([&](func::FuncOp op) {
       return typeConverter.isSignatureLegal(op.getFunctionType()) &&
@@ -254,4 +288,3 @@ struct TowerRuntimeToLLVMConversionPass
       signalPassFailure();
   }
 };
-} // namespace

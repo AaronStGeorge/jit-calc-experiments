@@ -6,7 +6,8 @@
 
 #include "mlir-c/IR.h"
 
-MLIR_DEFINE_CAPI_DIALECT_REGISTRATION(TowerRuntime, towerRuntime, mlir::towerRuntime::TowerRuntimeDialect)
+MLIR_DEFINE_CAPI_DIALECT_REGISTRATION(TowerRuntime, towerRuntime,
+                                      mlir::towerRuntime::TowerRuntimeDialect)
 
 MlirType mlirTowerRuntimeContextTypeGet(MlirContext ctx) {
   return wrap(mlir::towerRuntime::ContextType::get(unwrap(ctx)));

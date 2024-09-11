@@ -3,7 +3,7 @@
 
 #include <cstdint>
 
-struct context {
+struct MachineState {
   // stack pointer
   uint64_t sp;
   // link register
@@ -23,28 +23,34 @@ struct context {
   uint64_t x28;
 };
 
-typedef struct {
-  struct context *main;
-  struct context *thread;
+struct TowerRuntimeContext {
+  MachineState *main;
+  MachineState *thread;
   uint64_t count;
   uint64_t limit;
-} S;
+};
 
 extern "C" {
 
-// Intended to be called from main. The passed context should jump into the
-// "launchpad" function that expects the generated entrypoint as an argument.
-bool start(S *s, void (*entry)(S *));
+// Intended to be called from main. The thread context should jump into the
+// "launchpad" function that calls the generated entrypoint with arguments
+// packed in `in` parameter, and set results packed in `out` parameter (note
+// that "out" is the name of the argument, though it is an out parameter). See
+// CreateShimFunction.cpp for more information on how the input and output
+// parameters are munged around.
+bool start(TowerRuntimeContext *ctx,
+           void (*entry)(TowerRuntimeContext *, void *, void *), void *in,
+           void *out);
 
-// Swap from context in `from`, to context in `to`
-bool swap(struct context *from, struct context *to);
+// Swap from MachineState in `from`, to MachineState in `to`
+bool swap(MachineState *from, MachineState *to);
 
 // Intended to be called from the launchpad function, let's the main know thread
 // is done.
-void stop(S *s);
+void stop(TowerRuntimeContext *ctx);
 
-void dump(S *s);
-void check_swap(S *s);
+void dump(TowerRuntimeContext *ctx);
+void check_swap(TowerRuntimeContext *ctx);
 
 } // extern "C"
 

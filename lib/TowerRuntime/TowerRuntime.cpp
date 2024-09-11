@@ -6,13 +6,13 @@
 #include <iostream>
 
 extern "C" {
-void dump(S *s) {
+void dump(TowerRuntimeContext *s) {
   std::cout << "{main=" << s->main << ", thread=" << s->thread
             << ", count=" << s->count << ", limit=" << s->limit << "}"
             << std::endl;
 }
 
-void check_swap(S *s) {
+void check_swap(TowerRuntimeContext *s) {
   if (s->count < s->limit) {
     std::cout << "continue" << std::endl;
     return;

@@ -8,7 +8,7 @@ def ShimFunction: Pass<"shim-function", "::mlir::ModuleOp"> {
   let description = [{
     TODO
   }];
-  // let dependentDialects = ["::ArithDialect"];
+  let dependentDialects = ["LLVM::LLVMDialect"];
   let options = [
     Option<"functionToShim", "function-to-shim", "std::string",
       /*default=*/"\"\"",
