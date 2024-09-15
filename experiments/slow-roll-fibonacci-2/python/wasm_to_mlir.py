@@ -7,7 +7,14 @@ from typing import List, Optional, Dict, Callable, Any
 import wasm
 import jitcalc.ir as mlir
 import jitcalc.extras.types as T
-from jitcalc.dialects import arith, cf, func, memref, tower_runtime, wasm as wasm_d
+from jitcalc.dialects import (
+    arith,
+    cf,
+    func,
+    memref,
+    tower_runtime,
+    wasm as wasm_d,
+)
 
 
 def is_terminator(instruction: wasm.Instruction) -> bool:
@@ -46,19 +53,80 @@ class Translator(wasm.InstructionVisitor[None]):
         mlir.InsertionPoint
     )  # insertion point at top of function (used for indices to keep them grouped)
     wasm_locals: List[mlir.Value]
+    last_context: tower_runtime.ContextType
     stack: List[mlir.Value] = field(default_factory=list)
     jump_targets: List[mlir.Block] = field(default_factory=list)
 
+    # HELPER FUNCTIONS =========================================================
+
+    @staticmethod
+    def wrap_with_increment_and_check_swap(function):
+        """
+        Decorator to wrap visitors for instructions without any control flow
+        with tower_runtime.increment_count and tower_runtime.check_swap
+        generation.
+
+        Updates function that would have generated:
+            %2 = arith.addi %0, %1 : i32
+        to one that generates:
+            %2 = tower_runtime.increment_count %arg0 : !tower_runtime.ctx
+            %3 = arith.addi %0, %1 : i32
+            tower_runtime.check_swap %2 : !tower_runtime.ctx
+        """
+
+        def wrapper(self: "Translator", *args, **kwargs):
+            self.last_context = tower_runtime.increment_count(
+                self.last_context, ip=self.ip
+            )
+            result = function(self, *args, **kwargs)
+            tower_runtime.check_swap(self.last_context, ip=self.ip)
+            return result
+
+        return wrapper
+
+    def move_ip_to_block(self, block: mlir.Block):
+        """
+        Updates generation insertion point + associated state.
+
+        Blocks should always start with check_swap. A jump instruction into the
+        block may have bumped the count over the limit.
+        """
+        self.block = block
+        self.ip = mlir.InsertionPoint(block)
+        self.last_context = block.arguments[0]
+        tower_runtime.check_swap(self.last_context, ip=self.ip)
+
     def push(self, item: mlir.Value):
+        """
+        Push wasm op generation stack.
+
+        Wasm op generation stack adapts wasm stack machine to mlir register
+        machine at compile time.
+        """
         self.stack.append(item)
 
     def pop(self):
+        """
+        Pop wasm op generation stack
+
+        Wasm op generation stack adapts wasm stack machine to mlir register
+        machine at compile time.
+        """
         return self.stack.pop()
 
     def peek(self):
+        """
+        Peek wasm op generation stack
+
+        Wasm op generation stack adapts wasm stack machine to mlir register
+        machine at compile time.
+        """
         return self.stack[-1]
 
     def binary(self, op_func: Callable[[mlir.Value, mlir.Value], mlir.Value]):
+        """
+        Create binary wasm op
+        """
         rhs = self.pop()
         lhs = self.pop()
         result = op_func(lhs, rhs)
@@ -180,13 +248,15 @@ class Translator(wasm.InstructionVisitor[None]):
         The wasm block we're compiling might have arguments if there are jumps into the block with path dependent values
         not stored in wasm locals.
         """
-        block = self.block.create_after()
-        block_after = self.block.create_after()
+        block = self.block.create_after(tower_runtime.ContextType.get())
+        block_after = block.create_after(tower_runtime.ContextType.get())
 
-        cf.br([], block, ip=self.ip)
+        # We're not adding an increment_count instruction because this branch
+        # doesn't correspond to a wasm instruction. This branch adapts semantics,
+        # wasm "falls into" blocks, MLIR jumps into them.
+        cf.br([self.last_context], block, ip=self.ip)
 
-        self.block = block
-        self.ip = mlir.InsertionPoint(block)
+        self.move_ip_to_block(block)
 
         jump_targets = [block_after] + self.jump_targets
         if is_loop:
@@ -198,6 +268,7 @@ class Translator(wasm.InstructionVisitor[None]):
             indices=self.indices,
             wasm_locals=self.wasm_locals,
             block=self.block,
+            last_context=self.last_context,
             jump_targets=jump_targets,
             functions=self.functions,
         )
@@ -206,10 +277,11 @@ class Translator(wasm.InstructionVisitor[None]):
             block_instruction.accept(translator)
 
         if not is_terminator(instructions[-1]):
-            cf.br([], block_after, ip=translator.ip)
+            cf.br([self.last_context], block_after, ip=translator.ip)
 
-        self.block = block_after
-        self.ip = mlir.InsertionPoint(block_after)
+        self.move_ip_to_block(block_after)
+
+    # VISITOR FUNCTIONS ========================================================
 
     def visit_loop(self, instruction: wasm.loop) -> None:
         self.loop_or_block(instruction.instructions, is_loop=True)
@@ -221,7 +293,8 @@ class Translator(wasm.InstructionVisitor[None]):
         pass
 
     def visit_br(self, instruction: wasm.br) -> None:
-        cf.br([], self.jump_targets[instruction.args[0]], ip=self.ip)
+        self.last_context = tower_runtime.increment_count(self.last_context, ip=self.ip)
+        cf.br([self.last_context], self.jump_targets[instruction.args[0]], ip=self.ip)
 
     def visit_br_if(self, instruction: wasm.br_if) -> None:
         """
@@ -276,24 +349,26 @@ class Translator(wasm.InstructionVisitor[None]):
             value of a variable is path dependent will have wasm jump arguments. We need phi nodes if and only if there
             are block arguments.
         """
-        new_block = self.block.create_after()
+        new_block = self.block.create_after(tower_runtime.ContextType.get())
         val = self.pop()
         if val.type != T.bool():
             if val.type != T.i64() and val.type != T.i32():
                 raise ValueError("must be int type")
             zero = arith.constant(val.type, 0, ip=self.ip)
             val = arith.cmpi(arith.CmpIPredicate.ne, lhs=val, rhs=zero, ip=self.ip)
+        self.last_context = tower_runtime.increment_count(self.last_context, ip=self.ip)
         cf.cond_br(
             val,
-            [],
-            [],
+            [self.last_context],
+            [self.last_context],
             self.jump_targets[instruction.args[0]],
             new_block,
             ip=self.ip,
         )
-        self.block = new_block
-        self.ip = mlir.InsertionPoint(new_block)
 
+        self.move_ip_to_block(new_block)
+
+    @wrap_with_increment_and_check_swap
     def visit_local_get(self, instruction: wasm.local_get) -> None:
         self.push(
             memref.load(
@@ -303,6 +378,7 @@ class Translator(wasm.InstructionVisitor[None]):
             )
         )
 
+    @wrap_with_increment_and_check_swap
     def visit_local_set(self, instruction: wasm.local_set) -> None:
         memref.store(
             self.pop(),
@@ -311,6 +387,7 @@ class Translator(wasm.InstructionVisitor[None]):
             ip=self.ip,
         )
 
+    @wrap_with_increment_and_check_swap
     def visit_local_tee(self, instruction: wasm.local_tee) -> None:
         memref.store(
             self.peek(),
@@ -319,9 +396,11 @@ class Translator(wasm.InstructionVisitor[None]):
             ip=self.ip,
         )
 
+    @wrap_with_increment_and_check_swap
     def visit_i32_const(self, instruction: wasm.i32_const) -> None:
         self.push(arith.constant(T.i32(), instruction.args[0], ip=self.ip))
 
+    @wrap_with_increment_and_check_swap
     def visit_i32_ge_s(self, instruction: wasm.i32_ge_s) -> None:
         self.binary(
             lambda lhs, rhs: arith.cmpi(
@@ -329,6 +408,7 @@ class Translator(wasm.InstructionVisitor[None]):
             )
         )
 
+    @wrap_with_increment_and_check_swap
     def visit_i32_add(self, instruction: wasm.i32_add) -> None:
         self.binary(lambda lhs, rhs: arith.addi(lhs=lhs, rhs=rhs, ip=self.ip))
 
@@ -346,6 +426,7 @@ class Translator(wasm.InstructionVisitor[None]):
     def visit_wasm_return(self, instruction: wasm.wasm_return) -> None:
         func.return_([self.pop()], ip=self.ip)
 
+    @wrap_with_increment_and_check_swap
     def visit_i32_lt_s(self, instruction: wasm.i32_lt_s) -> None:
         self.binary(
             lambda lhs, rhs: arith.cmpi(
@@ -482,15 +563,10 @@ def compile_wasm(wasm_module: wasm.Module) -> mlir.Module:
                 # imports declared in the same module. The indices of these imports precede the indices of other
                 # definitions in the same index space."
                 functions=imported_functions + defined_functions,
+                last_context=ctx_argument,
             )
-            last_context = ctx_argument
             for instr in wasm_func.code.expr.instructions:
-                last_context = tower_runtime.increment_count(
-                    last_context, ip=translator.ip
-                )
                 instr.accept(translator)
-                tower_runtime.dump(last_context, ip=translator.ip)
-                tower_runtime.check_swap(last_context, ip=translator.ip)
 
             # add return if there is one
             if wasm_func.results:

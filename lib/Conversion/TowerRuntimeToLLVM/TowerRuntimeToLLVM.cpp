@@ -3,10 +3,13 @@
 #include "mlir/Conversion/LLVMCommon/TypeConverter.h"
 #include "mlir/Dialect/Arith/IR/Arith.h"
 #include "mlir/Dialect/Bufferization/IR/BufferizableOpInterface.h"
+#include "mlir/Dialect/ControlFlow/IR/ControlFlow.h"
+#include "mlir/Dialect/ControlFlow/IR/ControlFlowOps.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/Dialect/Func/Transforms/FuncConversions.h"
 #include "mlir/Dialect/LLVMIR/LLVMDialect.h"
 #include "mlir/Dialect/LLVMIR/LLVMTypes.h"
+#include "mlir/Dialect/MemRef/IR/MemRef.h"
 #include "mlir/Dialect/SCF/IR/SCF.h"
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/BuiltinAttributes.h"
@@ -266,23 +269,36 @@ struct TowerRuntimeToLLVMConversionPass
     patterns.add<LowerIncrement>(typeConverter, context);
     patterns.add<LowerLoad>(typeConverter, context);
 
+    ConversionTarget target(*context);
+
     // Ensure function signatures and all call ops are converted
-    populateCallOpTypeConversionPattern(patterns, typeConverter);
     populateFunctionOpInterfaceTypeConversionPattern<func::FuncOp>(
         patterns, typeConverter);
-
-    //
-    ConversionTarget target(*context);
     target.addDynamicallyLegalOp<func::FuncOp>([&](func::FuncOp op) {
       return typeConverter.isSignatureLegal(op.getFunctionType()) &&
              typeConverter.isLegal(&op.getBody());
     });
+
+    // Ensure calls sites are converted
+    populateCallOpTypeConversionPattern(patterns, typeConverter);
     target.addDynamicallyLegalOp<func::CallOp>([&](func::CallOp op) {
       return typeConverter.isSignatureLegal(op.getCalleeType());
     });
+
+    // Ensure block arguments + branch instructions are converted
+    populateBranchOpInterfaceTypeConversionPattern(patterns, typeConverter);
+    target.addDynamicallyLegalOp<cf::BranchOp>([&](cf::BranchOp op) {
+      return typeConverter.isLegal(op->getOperandTypes());
+    });
+    target.addDynamicallyLegalOp<cf::CondBranchOp>([&](cf::CondBranchOp op) {
+      return typeConverter.isLegal(op->getOperandTypes());
+    });
+
     target.addLegalDialect<LLVM::LLVMDialect>();
     target.addLegalDialect<arith::ArithDialect>();
     target.addLegalDialect<scf::SCFDialect>();
+    target.addLegalDialect<memref::MemRefDialect>();
+    target.addLegalOp<func::ReturnOp>();
 
     if (failed(applyPartialConversion(module, target, std::move(patterns))))
       signalPassFailure();

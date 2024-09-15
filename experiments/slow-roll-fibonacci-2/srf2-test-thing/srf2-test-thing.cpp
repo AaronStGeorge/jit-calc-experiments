@@ -100,12 +100,21 @@ void launchpad(TowerRuntimeContext *ctx,
 
 struct In {
   int a;
-  int b;
 };
 
 struct Out {
   int result;
 };
+
+int a_func() {
+  std::cout << "func_a called" << std::endl;
+  return 69;
+}
+
+int b_func() {
+  std::cout << "func_b called" << std::endl;
+  return 420;
+}
 
 int main(int argc, char *argv[]) {
   // LLVM init
@@ -132,6 +141,8 @@ int main(int argc, char *argv[]) {
   llvm::cantFail(jit->getMainJITDylib().define(llvm::orc::absoluteSymbols({
       RUNTIME_FUNCTION(dump),
       RUNTIME_FUNCTION(check_swap),
+      RUNTIME_FUNCTION(a_func),
+      RUNTIME_FUNCTION(b_func),
   })));
 #undef RUNTIME_FUNCTION
 
@@ -140,7 +151,7 @@ int main(int argc, char *argv[]) {
   llvm::cantFail(jit->addIRModule(getLLVMIRFromStdin()));
 
   // grab address of add function
-  auto entryAddr = llvm::cantFail(jit->lookup("add_shim"));
+  auto entryAddr = llvm::cantFail(jit->lookup("cond_shim"));
   void (*entry)(TowerRuntimeContext *, void *, void *) =
       entryAddr.toPtr<void(TowerRuntimeContext *, void *, void *)>();
 
@@ -168,7 +179,7 @@ int main(int argc, char *argv[]) {
       .limit = 0,
   };
 
-  In in = {.a = 400, .b = 20};
+  In in = {.a = 7};
   Out out = {.result = -1};
   for (bool done = start(&ctx, entry, &in, &out); !done;
        done = swap(/*from*/ ctx.main, /*to*/ ctx.thread)) {

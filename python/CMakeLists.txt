@@ -39,6 +39,7 @@ declare_mlir_dialect_python_bindings(
   TD_FILE dialects/TowerRuntimeOps.td
   SOURCES
     dialects/tower_runtime.py
+    dialects/tower_runtime.pyi
   DIALECT_NAME tower_runtime)
 
 declare_mlir_python_extension(JitCalcPythonSources.TowerRuntimeExtension
