@@ -94,8 +94,8 @@ void launchpad(TowerRuntimeContext *ctx,
   entry(ctx, in, out);
 
   stop(ctx);
-  llvm_unreachable("This should be unreachable! If you're here then you forgot "
-                   "to call \"stop\" and ran off the end of the call stack.");
+  llvm_unreachable("This should be unreachable! If you're here, you probably "
+                   "restarted a stoped thread, don't do that.");
 }
 
 struct In {
@@ -151,7 +151,7 @@ int main(int argc, char *argv[]) {
   llvm::cantFail(jit->addIRModule(getLLVMIRFromStdin()));
 
   // grab address of add function
-  auto entryAddr = llvm::cantFail(jit->lookup("cond_shim"));
+  auto entryAddr = llvm::cantFail(jit->lookup("fib_shim"));
   void (*entry)(TowerRuntimeContext *, void *, void *) =
       entryAddr.toPtr<void(TowerRuntimeContext *, void *, void *)>();
 
@@ -159,32 +159,39 @@ int main(int argc, char *argv[]) {
   struct MachineState main_ctx;
   struct MachineState thread_ctx;
 
-  // setup stack
-  size_t stack_size = 4 * 1024;
-  char *stack = (char *)calloc(stack_size, sizeof(char));
-  // set the link register to our setup/launch function. ARM's RET instruction
-  // will return (aka jump) to whatever function we set here. You can't set the
-  // link register like this from C, but the co-routine start function is
-  // written in assembly.
-  thread_ctx.lr = (uint64_t)launchpad;
+  for (int i = 0; i < 10; i++) {
+    // setup stack
+    size_t stack_size = 4 * 1024;
+    char *stack = (char *)calloc(stack_size, sizeof(char));
+    // set the link register to our setup/launch function. ARM's RET instruction
+    // will return (aka jump) to whatever function we set here. You can't set
+    // the link register like this from C, but the co-routine start function is
+    // written in assembly.
+    thread_ctx.lr = (uint64_t)launchpad;
 
-  // set stack for thread context
-  thread_ctx.sp = (uint64_t)&stack[stack_size];
-  thread_ctx.fp = (uint64_t)&stack[stack_size];
+    // set stack for thread context
+    thread_ctx.sp = (uint64_t)&stack[stack_size];
+    thread_ctx.fp = (uint64_t)&stack[stack_size];
 
-  TowerRuntimeContext ctx{
-      .main = &main_ctx,
-      .thread = &thread_ctx,
-      .count = 0,
-      .limit = 0,
-  };
+    TowerRuntimeContext ctx{
+        .main = &main_ctx,
+        .thread = &thread_ctx,
+        .count = 0,
+        .limit = 0,
+    };
 
-  In in = {.a = 7};
-  Out out = {.result = -1};
-  for (bool done = start(&ctx, entry, &in, &out); !done;
-       done = swap(/*from*/ ctx.main, /*to*/ ctx.thread)) {
-    std::cout << "ding" << std::endl;
+    std::cout << "fib(" << i << ")" << std::endl;
+    In in = {.a = i};
+    Out out = {.result = -1};
+    for (bool done = start(&ctx, entry, &in, &out); !done;
+         done = swap(/*from*/ ctx.main, /*to*/ ctx.thread)) {
+      std::cout << "🔄";
+    }
+    std::cout << std::endl;
+    std::cout << "done: " << out.result << std::endl;
+
+    free(stack);
   }
-  std::cout << "done: " << out.result << std::endl;
+
   return 0;
 }
