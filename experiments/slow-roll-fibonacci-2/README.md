@@ -39,7 +39,7 @@ multitasking.
 			could really speed things up!
 		- We'll need somewhere to insert the swap calls, an MLIR pass would be a
 			very nice way to do this.
-- [ ] create a webassembly runtime using MLIR good enough to run fibonacci with swap calls
+- [x] create a webassembly runtime using MLIR good enough to run fibonacci with swap calls
 	- [x] write a webassembly interpreter for practice (also only that's good enough to do fibonacci).
 	- [ ] ~~create an MLIR webassembly dialect~~.
 		- a wasm dialect probably isn't necessary. We'll definitely need a "towervm"
@@ -66,14 +66,14 @@ multitasking.
 				- [x] expand interpreter to include instructions needed for simple_cond.wasm
                   - It's probably easiest to just create fake functions for the
                   calls to imported functions in simple_cond.wasm
-	- [ ] Insert instruction counts and swap calls when limit is reached.
+	- [x] Insert instruction counts and swap calls when limit is reached.
 	  - [x] First thing is to be able to call into the generated code with a
 		context containing instruction counts. I'd like to create an MLIR type to
 		represent the context that will lower to LLVM that's ABI compatible with a
 		C struct.
-	  - [ ] Be able to swap in and out of generated code
-          - [ ] Python setup to be able to generate runtime dialect
-          - [ ] Insert the swap calls
+	  - [x] Be able to swap in and out of generated code
+          - [x] Python setup to be able to generate runtime dialect
+          - [x] Insert the swap calls
 
 	- [ ] ~~lower webassembly dialect to LLVM~~
 
