@@ -138,13 +138,15 @@ struct LowerCheckSwap : public OpConversionPattern<towerRuntime::CheckSwapOp> {
     Value count = contextStructBuilder.count(rewriter, op->getLoc());
     Value limit = contextStructBuilder.limit(rewriter, op->getLoc());
 
-    Value isOverLimit = rewriter.create<arith::CmpIOp>(
+    Value isCountGreaterEqualLimit = rewriter.create<arith::CmpIOp>(
         op.getLoc(), arith::CmpIPredicate::uge, count, limit);
 
-    rewriter.create<scf::IfOp>(
-        op->getLoc(), isOverLimit,
-        [&contextStructBuilder, symbolTable = this->symbolTable](OpBuilder &b,
-                                                                 Location loc) {
+    rewriter.replaceOpWithNewOp<scf::IfOp>(
+        op, isCountGreaterEqualLimit,
+        /*thenBuilder*/
+        [input = adaptor.getInput(),
+         symbolTable = this->symbolTable](OpBuilder &b, Location loc) {
+          ContextStructBuilder contextStructBuilder(input);
           func::FuncOp callee = lookupRuntimeFunction(symbolTable, "swap");
 
           // call swap(/*from*/ thread, /*to*/ main);
@@ -152,10 +154,18 @@ struct LowerCheckSwap : public OpConversionPattern<towerRuntime::CheckSwapOp> {
           Value mainCtx = contextStructBuilder.mainCtx(b, loc);
           b.create<func::CallOp>(loc, callee, ValueRange({threadCtx, mainCtx}));
 
-          b.create<scf::YieldOp>(loc);
-        });
+          // once the game swaps back, reset instruction count to 0
+          auto i64Ty = IntegerType::get(b.getContext(), 64);
+          auto constOp =
+              b.create<arith::ConstantOp>(loc, i64Ty, b.getI64IntegerAttr(0));
+          contextStructBuilder.setCount(b, loc, constOp);
 
-    rewriter.eraseOp(op);
+          b.create<scf::YieldOp>(loc, Value(contextStructBuilder));
+        },
+        /*elseBuilder*/
+        [input = adaptor.getInput()](OpBuilder &b, Location loc) {
+          b.create<scf::YieldOp>(loc, input);
+        });
     return success();
   }
 

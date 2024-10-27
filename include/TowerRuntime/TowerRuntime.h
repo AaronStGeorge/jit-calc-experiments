@@ -49,9 +49,6 @@ bool swap(MachineState *from, MachineState *to);
 // is done.
 void stop(TowerRuntimeContext *ctx);
 
-void dump(TowerRuntimeContext *ctx);
-void check_swap(TowerRuntimeContext *ctx);
-
 } // extern "C"
 
 #endif // TOWER_RUNTIME_H

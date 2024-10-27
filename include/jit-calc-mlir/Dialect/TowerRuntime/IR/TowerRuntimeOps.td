@@ -24,10 +24,11 @@ def TowerRuntime_CheckSwapOp : TowerRuntime_Op<"check_swap"> {
     let description = [{
         TowerRuntime context stores a tread context and an op limit. CheckSwapOp
         checks if the op count has reached the op limit and if so swaps to the
-        stored thread context.
+        stored context. After the swap returns, the count is reset.
     }];
 
     let arguments = (ins TowerRuntime_Context:$input);
+    let results = (outs TowerRuntime_Context);
 
     let assemblyFormat = [{
         $input attr-dict `:` type($input)

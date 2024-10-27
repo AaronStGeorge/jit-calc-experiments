@@ -56,6 +56,7 @@ class Translator(wasm.InstructionVisitor[None]):
     last_context: tower_runtime.ContextType
     stack: List[mlir.Value] = field(default_factory=list)
     jump_targets: List[mlir.Block] = field(default_factory=list)
+    debug: bool = False
 
     # HELPER FUNCTIONS =========================================================
 
@@ -71,7 +72,7 @@ class Translator(wasm.InstructionVisitor[None]):
         to one that generates:
             %2 = tower_runtime.increment_count %arg0 : !tower_runtime.ctx
             %3 = arith.addi %0, %1 : i32
-            tower_runtime.check_swap %2 : !tower_runtime.ctx
+            %4 = tower_runtime.check_swap %2 : !tower_runtime.ctx
         """
 
         def wrapper(self: "Translator", *args, **kwargs):
@@ -79,7 +80,9 @@ class Translator(wasm.InstructionVisitor[None]):
                 self.last_context, ip=self.ip
             )
             result = function(self, *args, **kwargs)
-            tower_runtime.check_swap(self.last_context, ip=self.ip)
+            if self.debug:
+                tower_runtime.dump(self.last_context, ip=self.ip)
+            self.last_context = tower_runtime.check_swap(self.last_context, ip=self.ip)
             return result
 
         return wrapper
@@ -94,7 +97,9 @@ class Translator(wasm.InstructionVisitor[None]):
         self.block = block
         self.ip = mlir.InsertionPoint(block)
         self.last_context = block.arguments[0]
-        tower_runtime.check_swap(self.last_context, ip=self.ip)
+        if self.debug:
+            tower_runtime.dump(self.last_context, ip=self.ip)
+        self.last_context = tower_runtime.check_swap(self.last_context, ip=self.ip)
 
     def push(self, item: mlir.Value):
         """
@@ -271,13 +276,14 @@ class Translator(wasm.InstructionVisitor[None]):
             last_context=self.last_context,
             jump_targets=jump_targets,
             functions=self.functions,
+            debug=self.debug,
         )
 
         for block_instruction in instructions:
             block_instruction.accept(translator)
 
         if not is_terminator(instructions[-1]):
-            cf.br([self.last_context], block_after, ip=translator.ip)
+            cf.br([translator.last_context], block_after, ip=translator.ip)
 
         self.move_ip_to_block(block_after)
 
@@ -435,7 +441,7 @@ class Translator(wasm.InstructionVisitor[None]):
         )
 
 
-def compile_wasm(wasm_module: wasm.Module) -> mlir.Module:
+def compile_wasm(wasm_module: wasm.Module, debug: bool) -> mlir.Module:
     """
     expected to be called within a with Context block
     """
@@ -564,6 +570,7 @@ def compile_wasm(wasm_module: wasm.Module) -> mlir.Module:
                 # definitions in the same index space."
                 functions=imported_functions + defined_functions,
                 last_context=ctx_argument,
+                debug=debug,
             )
             for instr in wasm_func.code.expr.instructions:
                 instr.accept(translator)
@@ -587,7 +594,7 @@ def main():
         wasm_module = wasm.decode(stream)
 
         with mlir.Context():
-            mlir_module = compile_wasm(wasm_module)
+            mlir_module = compile_wasm(wasm_module, debug=False)
             print(mlir_module)
 
 

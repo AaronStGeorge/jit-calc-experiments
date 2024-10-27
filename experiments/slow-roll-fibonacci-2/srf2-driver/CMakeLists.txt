@@ -5,9 +5,9 @@ set(LLVM_LINK_COMPONENTS
   nativecodegen
   native
   )
-add_llvm_executable(srf2-test-thing srf2-test-thing.cpp)
-llvm_update_compile_flags(srf2-test-thing)
-target_link_libraries(srf2-test-thing PRIVATE
+add_llvm_executable(srf2-driver srf2-driver.cpp)
+llvm_update_compile_flags(srf2-driver)
+target_link_libraries(srf2-driver PRIVATE
   MLIRAnalysis
   MLIRBuiltinToLLVMIRTranslation
   MLIRExecutionEngine
@@ -23,7 +23,7 @@ target_link_libraries(srf2-test-thing PRIVATE
   WasmTransforms
   TowerRuntimeStatic
   )
-mlir_check_all_link_libraries(srf2-test-thing)
+mlir_check_all_link_libraries(srf2-driver)
 # Don't ask me what the fuck this witchcraft
 # https://github.com/llvm/llvm-project/issues/61712
-export_executable_symbols(srf2-test-thing)
+export_executable_symbols(srf2-driver)

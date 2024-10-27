@@ -30,6 +30,7 @@
 #include "jit-calc-mlir/Dialect/Wasm/Transforms/Passes.h"
 
 #include <cstdint>
+#include <iomanip>
 #include <iostream>
 #include <sstream>
 #include <string>
@@ -91,6 +92,9 @@ llvm::orc::ThreadSafeModule getLLVMIRFromStdin() {
 void launchpad(TowerRuntimeContext *ctx,
                void (*entry)(TowerRuntimeContext *, void *, void *), void *in,
                void *out) {
+  // Swap out immediately, the first call is just to get
+  swap(ctx->thread, ctx->main);
+
   entry(ctx, in, out);
 
   stop(ctx);
@@ -98,22 +102,23 @@ void launchpad(TowerRuntimeContext *ctx,
                    "restarted a stoped thread, don't do that.");
 }
 
-struct In {
-  int a;
-};
+int fib(int n) {
+  int i = 0;
+  int j = 1;
 
-struct Out {
-  int result;
-};
+  for (int c = 0; c < n; c++) {
+    int tmp = i;
+    i = j;
+    j = i + tmp;
+  }
 
-int a_func() {
-  std::cout << "func_a called" << std::endl;
-  return 69;
+  return i;
 }
 
-int b_func() {
-  std::cout << "func_b called" << std::endl;
-  return 420;
+void dump(TowerRuntimeContext *s) {
+  std::cout << "{main=" << s->main << ", thread=" << s->thread
+            << ", count=" << s->count << ", limit=" << s->limit << "}"
+            << std::endl;
 }
 
 int main(int argc, char *argv[]) {
@@ -140,9 +145,6 @@ int main(int argc, char *argv[]) {
   }
   llvm::cantFail(jit->getMainJITDylib().define(llvm::orc::absoluteSymbols({
       RUNTIME_FUNCTION(dump),
-      RUNTIME_FUNCTION(check_swap),
-      RUNTIME_FUNCTION(a_func),
-      RUNTIME_FUNCTION(b_func),
   })));
 #undef RUNTIME_FUNCTION
 
@@ -159,39 +161,60 @@ int main(int argc, char *argv[]) {
   struct MachineState main_ctx;
   struct MachineState thread_ctx;
 
-  for (int i = 0; i < 10; i++) {
-    // setup stack
-    size_t stack_size = 4 * 1024;
-    char *stack = (char *)calloc(stack_size, sizeof(char));
-    // set the link register to our setup/launch function. ARM's RET instruction
-    // will return (aka jump) to whatever function we set here. You can't set
-    // the link register like this from C, but the co-routine start function is
-    // written in assembly.
-    thread_ctx.lr = (uint64_t)launchpad;
+  int in = -1;
+  int slowRollCompleted = -1;
+  int slowRollComputing = -1;
 
-    // set stack for thread context
-    thread_ctx.sp = (uint64_t)&stack[stack_size];
-    thread_ctx.fp = (uint64_t)&stack[stack_size];
+  bool doesSlowRollNeedSetup = true;
+  size_t stackSize = 8 * 1024;
+  // setup stack
+  char *stack = (char *)calloc(stackSize, sizeof(char));
 
-    TowerRuntimeContext ctx{
-        .main = &main_ctx,
-        .thread = &thread_ctx,
-        .count = 0,
-        .limit = 0,
-    };
+  TowerRuntimeContext ctx{
+      .main = &main_ctx,
+      .thread = &thread_ctx,
+      .count = 0,
+      .limit = 256,
+  };
 
-    std::cout << "fib(" << i << ")" << std::endl;
-    In in = {.a = i};
-    Out out = {.result = -1};
-    for (bool done = start(&ctx, entry, &in, &out); !done;
-         done = swap(/*from*/ ctx.main, /*to*/ ctx.thread)) {
-      std::cout << "🔄";
+  std::cout << "Fibonacci game!" << std::endl;
+  std::cout << "game";
+  std::cout << std::setw(6) << "user";
+  std::cout << std::endl;
+
+  for (int i = 0; i < 20; i++) {
+    if (doesSlowRollNeedSetup) {
+      doesSlowRollNeedSetup = false;
+
+      // set the link register to our setup/launch function. ARM's RET
+      // instruction will return (aka jump) to whatever function we set here.
+      // You can't set the link register like this from C, but the co-routine
+      // start function is written in assembly.
+      thread_ctx.lr = (uint64_t)launchpad;
+
+      // set stack for thread context
+      thread_ctx.sp = (uint64_t)&stack[stackSize];
+      thread_ctx.fp = (uint64_t)&stack[stackSize];
+
+      in = i;
+
+      // Start is called will pointers
+      start(&ctx, entry, &in, &slowRollComputing);
     }
-    std::cout << std::endl;
-    std::cout << "done: " << out.result << std::endl;
 
-    free(stack);
+    if (swap(/*from*/ ctx.main, /*to*/ ctx.thread)) {
+      slowRollCompleted = slowRollComputing;
+      doesSlowRollNeedSetup = true;
+    }
+
+    int slowRoll = slowRollCompleted;
+    int fastRoll = fib(i);
+
+    std::cout << std::setw(4) << fastRoll;
+    std::cout << std::setw(6) << slowRoll;
+    std::cout << std::endl;
   }
+  free(stack);
 
   return 0;
 }
