@@ -92,7 +92,9 @@ llvm::orc::ThreadSafeModule getLLVMIRFromStdin() {
 void launchpad(TowerRuntimeContext *ctx,
                void (*entry)(TowerRuntimeContext *, void *, void *), void *in,
                void *out) {
-  // Swap out immediately, the first call is just to get
+  // Swap out immediately, the first call is just to get things set up so we can
+  // call into game code with a simple `swap` later rather than needing `start`
+  // with the arguments and stuff.
   swap(ctx->thread, ctx->main);
 
   entry(ctx, in, out);
@@ -131,9 +133,7 @@ int main(int argc, char *argv[]) {
   auto jit = llvm::cantFail(llvm::orc::LLJITBuilder().create());
 
   // Load each symbol from the runtime we want to be available to running
-  // program into jit. Runtime is statically linked into this program. We could
-  // do some fancy shit like parse a header file dump all the names we find in,
-  // but that sounds like a pain in the ass.
+  // program into jit.
 #define RUNTIME_FUNCTION(f)                                                    \
   llvm::detail::DenseMapPair<llvm::orc::SymbolStringPtr,                       \
                              llvm::orc::ExecutorSymbolDef>{                    \
@@ -148,11 +148,12 @@ int main(int argc, char *argv[]) {
   })));
 #undef RUNTIME_FUNCTION
 
-  // Load whatever jit. This should result in a page with execute
-  // permissions containing the assembly compiled from the LLVM IR we produced
+  // Load whatever we get from stdin into jit. This should result in a page with
+  // execute permissions containing the assembly compiled from the LLVM IR we
+  // produced.
   llvm::cantFail(jit->addIRModule(getLLVMIRFromStdin()));
 
-  // grab address of add function
+  // grab address of fib function.
   auto entryAddr = llvm::cantFail(jit->lookup("fib_shim"));
   void (*entry)(TowerRuntimeContext *, void *, void *) =
       entryAddr.toPtr<void(TowerRuntimeContext *, void *, void *)>();
@@ -161,13 +162,15 @@ int main(int argc, char *argv[]) {
   struct MachineState main_ctx;
   struct MachineState thread_ctx;
 
+  // arguments
   int in = -1;
   int slowRollCompleted = -1;
   int slowRollComputing = -1;
 
   bool doesSlowRollNeedSetup = true;
-  size_t stackSize = 8 * 1024;
+
   // setup stack
+  size_t stackSize = 8 * 1024;
   char *stack = (char *)calloc(stackSize, sizeof(char));
 
   TowerRuntimeContext ctx{
@@ -177,7 +180,7 @@ int main(int argc, char *argv[]) {
       .limit = 256,
   };
 
-  std::cout << "Fibonacci game!" << std::endl;
+  std::cout << "Fibonacci game 2!" << std::endl;
   std::cout << "game";
   std::cout << std::setw(6) << "user";
   std::cout << std::endl;
@@ -198,7 +201,8 @@ int main(int argc, char *argv[]) {
 
       in = i;
 
-      // Start is called will pointers
+      // Start uses pointers to make the ABI simpler, the function is
+      // implemented in assembly so such things matter.
       start(&ctx, entry, &in, &slowRollComputing);
     }
 
