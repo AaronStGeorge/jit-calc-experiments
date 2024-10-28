@@ -58,7 +58,7 @@ Hading the above C program to clang and asking for `wasm` back we get the progra
     end
     call $b_func)
 ```
-We then convert that to an MLIR based representation, and interleave the `tower_runtime.check_swap` and `tower_runtime.increment_count` instructions using our [custom compiler](https://github.com/AaronStGeorge/jit-calc-experiments/blob/eb01f69/experiments/slow-roll-fibonacci-2/python/wasm_to_mlir.py).
+We then convert that to an MLIR based representation, and interleave the [`check_swap`](https://github.com/AaronStGeorge/jit-calc-experiments/blob/b9579f6c6e32408bff9ff280a0f54e1ac9741025/include/jit-calc-mlir/Dialect/TowerRuntime/IR/TowerRuntimeOps.td#L22-L36) and [`increment_count`](https://github.com/AaronStGeorge/jit-calc-experiments/blob/b9579f6c6e32408bff9ff280a0f54e1ac9741025/include/jit-calc-mlir/Dialect/TowerRuntime/IR/TowerRuntimeOps.td#L38-L50) instructions using our [custom compiler](https://github.com/AaronStGeorge/jit-calc-experiments/blob/eb01f69/experiments/slow-roll-fibonacci-2/python/wasm_to_mlir.py).
 ```mlir
 module {
   func.func private @a_func() -> i32
@@ -92,7 +92,7 @@ module {
   }
 }
 ```
-This representation needs a few custom lowering passes ([`--shim-function`](https://github.com/AaronStGeorge/jit-calc-experiments/blob/eb01f6996c6c13cb7d303c2893d5192308766cc6/include/jit-calc-mlir/Dialect/TowerRuntime/Transforms/Passes.td#L6-L17), [`--convert-tower-runtime-to-llvm`](https://github.com/AaronStGeorge/jit-calc-experiments/blob/eb01f6996c6c13cb7d303c2893d5192308766cc6/include/jit-calc-mlir/Conversion/Passes.td#L18-L27)), but can otherwise some slapped together [LLVM mumbo jumbo](https://github.com/AaronStGeorge/jit-calc-experiments/blob/eb01f6996c6c13cb7d303c2893d5192308766cc6/experiments/slow-roll-fibonacci-2/srf2-driver/srf2-driver.cpp) can lower the above representation down to executable code. The result turns out to work very similar to how [`jit-calc`](../jit-calc) worked.
+This representation needs a few custom lowering passes ([`--shim-function`](https://github.com/AaronStGeorge/jit-calc-experiments/blob/eb01f6996c6c13cb7d303c2893d5192308766cc6/include/jit-calc-mlir/Dialect/TowerRuntime/Transforms/Passes.td#L6-L17), [`--convert-tower-runtime-to-llvm`](https://github.com/AaronStGeorge/jit-calc-experiments/blob/eb01f6996c6c13cb7d303c2893d5192308766cc6/include/jit-calc-mlir/Conversion/Passes.td#L18-L27)), but otherwise some slapped together [LLVM mumbo jumbo](https://github.com/AaronStGeorge/jit-calc-experiments/blob/eb01f6996c6c13cb7d303c2893d5192308766cc6/experiments/slow-roll-fibonacci-2/srf2-driver/srf2-driver.cpp) can lower the above representation down to executable code. The result turns out to work very similar to how [`jit-calc`](../jit-calc) worked.
 
 ## What
 
