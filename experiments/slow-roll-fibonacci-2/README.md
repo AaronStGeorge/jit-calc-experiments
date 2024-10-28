@@ -1,82 +1,98 @@
 # slow-roll-fibonacci-2
 
+## Running
+
+You'll need everything built, and you'll need to source [`source_me_to_setup_slow-roll-fibonacci-2_experiment.sh`](https://github.com/AaronStGeorge/jit-calc-experiments/blob/eb01f6996c6c13cb7d303c2893d5192308766cc6/source_me_to_setup_slow-roll-fibonacci-2_experiment.sh).
+
+```shell
+$ python experiments/slow-roll-fibonacci-2/python/wasm_to_mlir.py test/experiments/slow-roll-fibonacci-2/fib.wasm \
+	| srf2-opt --shim-function='function-to-shim=fib' --convert-tower-runtime-to-llvm \
+	| srf2-driver
+```
+
 ## Why
 
 `slow-roll-fibonacci-2` solves the same problem as
 [`slow-roll-fibonacci-1`](../slow-roll-fibonacci-1) but, in consideration to the
-problems discussed in [`count-to-n`](../count-to-n), it uses a compiler to generate
-calls to cooperative multitasking library rather than using pre-emptive
-multitasking.
+problems discussed in [`count-to-n`](../count-to-n).
 
 ## How
 
-### steps
+The strategy hasn't changed from [`slow-roll-fibonacci-1`](../slow-roll-fibonacci-1#how-(strategy)), but the [tactics](../slow-roll-fibonacci-1#how-(tatctics)) have. 
+`slow-roll-fibonacci-2` uses a custom compiler to generate calls to a cooperative multitasking library.
+We no longer swap in and out of user programs at random points when a timer pings.
+`slow-roll-fibonacci-2`'s custom compiler interleaves "runtime control" instructions [`increment_count`](https://github.com/AaronStGeorge/jit-calc-experiments/blob/b9579f6c6e32408bff9ff280a0f54e1ac9741025/include/jit-calc-mlir/Dialect/TowerRuntime/IR/TowerRuntimeOps.td#L38-L50) and [`check_swap`](https://github.com/AaronStGeorge/jit-calc-experiments/blob/b9579f6c6e32408bff9ff280a0f54e1ac9741025/include/jit-calc-mlir/Dialect/TowerRuntime/IR/TowerRuntimeOps.td#L22-L36) around user instructions.
+[`increment_count`](https://github.com/AaronStGeorge/jit-calc-experiments/blob/b9579f6c6e32408bff9ff280a0f54e1ac9741025/include/jit-calc-mlir/Dialect/TowerRuntime/IR/TowerRuntimeOps.td#L38-L50) counts user-instructions, and [`check_swap`](https://github.com/AaronStGeorge/jit-calc-experiments/blob/b9579f6c6e32408bff9ff280a0f54e1ac9741025/include/jit-calc-mlir/Dialect/TowerRuntime/IR/TowerRuntimeOps.td#L22-L36) swaps out of user code when user-instruction count reaches a limit set by game code.
 
-- [x] get an MLIR fibonacci to run through LLVM
-- [x] swap in and out of fibonacci at least once using library developed in
-			count-to-n maybe just swapping out every instruction
-- [x] take a look at the intermediate results get some idea to design the VM
-	- "the VM" here is basically a (or maybe a set of) MLIR dialects where each
-		MLIR operation is considered an operation on the computers game code runs on.
-		So, we can say if each computer gets 400 cycles that equates to 400 operations
-		if each operation is equally costly.
-	- this could be existing MLIR dialects or a new one that maps fairly
-		straight-forwardly to LLVM
-	- (after a week + of thinking) I'm dumb! Why wouldn't this just be wasm?  This
-		type of thing is like exactly what it was designed for. I'll take a look at
-		some existing wasm runtimes, might not even need to roll our own here. Though
-		TBH rolling our own sounds fun.
-    - [x] find ex-post-facto excuse why rolling our own MLIR based wasm
-      runtime is a necessary, high ROI, activity.
-		- We'll likely want to run many copies of the same program, vectorizing this
-			execution could lead to significant savings. We'll essentially have
-			something like:
-				for (int i = 0; i < num_copies; i++) {
-					run_program(p, memories[i], inputs[i]);
-				}
-			We can run that loop in parallel, *or* do outer loop vectorization and
-			shift the parallelism (at least somewhat) into the instructions. That
-			could really speed things up!
-		- We'll need somewhere to insert the swap calls, an MLIR pass would be a
-			very nice way to do this.
-- [x] create a webassembly runtime using MLIR good enough to run fibonacci with swap calls
-	- [x] write a webassembly interpreter for practice (also only that's good enough to do fibonacci).
-	- [ ] ~~create an MLIR webassembly dialect~~.
-		- a wasm dialect probably isn't necessary. We'll definitely need a "towervm"
-		dialect (or something) with instructions that indicate the places we should
-		increment instruction count, and places to check to see if it's time to swap
-		out. We *could* create a wasm dialect then insert the "towervm" instructions
-		between the wasm instructions before lowering the wasm dialect to "standard"
-		MLIR. *Or*, we could just generate the MLIR that the wasm dialect would
-		lower to + generate the "towervm" instructions between each "chunk" of
-		lowered MLIR.
-			- I think the latter is a little easier and relatively risk free. We'll
-			need to lower + insert "towervm" instructions in one step as we won't have
-			any way to back out the wasm provenance of MLIR instructions after
-			lowering. I don't love welding those steps together, but it shouldn't be
-			the hardest thing to break apart later should things get ugly.
-	- [x] write a compiler?,assembler? that takes serialized wasm and generates
-	MLIR that can be compiled down to machine code and executed
-		- [x] for add.c
-		- [x] for fib.c
-			- [x] for simple_cond.c (simpler branching behavior + CFG)
-				- [x] expand decoder to include import section so simple_cond.wasm can be decoded
-                  - [x] import section decode
-                  - [x] instruction decode
-				- [x] expand interpreter to include instructions needed for simple_cond.wasm
-                  - It's probably easiest to just create fake functions for the
-                  calls to imported functions in simple_cond.wasm
-	- [x] Insert instruction counts and swap calls when limit is reached.
-	  - [x] First thing is to be able to call into the generated code with a
-		context containing instruction counts. I'd like to create an MLIR type to
-		represent the context that will lower to LLVM that's ABI compatible with a
-		C struct.
-	  - [x] Be able to swap in and out of generated code
-          - [x] Python setup to be able to generate runtime dialect
-          - [x] Insert the swap calls
+To make that a little more concrete let's walk through an example, take the following C code
+```c
+int a_func();
+int b_func();
 
-	- [ ] ~~lower webassembly dialect to LLVM~~
+int cond(int n) {
+    if (n > 5) {
+        return a_func();
+    }
+    return b_func();
+}
+```
 
+`slow-roll-fibonacci-2` wants to run a set number of "instructions" from the above program, then swap back into user code using a [swap mechanism](https://c9x.me/articles/gthreads/intro.html).
+The first thing `slow-roll-fibonacci-2` needs is a rigorous definition of what a user code "instruction" actually is.
+
+We chose `wasm` as the instruction set. Here's the pitch for wasm: 
+- `wasm` is well defined and relatively small.
+- `wasm` was designed for security, there likely could be some security benefits down the line.
+-  A big pile of compilers already exist that will hand us `wasm` instructions for a user program in various languages.
+
+Hading the above C program to clang and asking for `wasm` back we get the program below
+```wasm
+ (func $cond (type 2) (param i32) (result i32)
+    block  ;; label = @1
+      local.get 0
+      i32.const 6
+      i32.lt_s
+      br_if 0 (;@1;)
+      call $a_func
+      return
+    end
+    call $b_func)
+```
+We then convert that to an MLIR based representation, and interleave the `tower_runtime.check_swap` and `tower_runtime.increment_count` instructions using our [custom compiler](https://github.com/AaronStGeorge/jit-calc-experiments/blob/eb01f69/experiments/slow-roll-fibonacci-2/python/wasm_to_mlir.py).
+```mlir
+module {
+  func.func private @a_func() -> i32
+  func.func private @b_func() -> i32
+  func.func @cond(%arg0: !tower_runtime.ctx, %arg1: i32) -> i32 {
+    %c0 = arith.constant 0 : index
+    %alloca = memref.alloca() : memref<1xi32>
+    memref.store %arg1, %alloca[%c0] : memref<1xi32>
+    cf.br ^bb1(%arg0 : !tower_runtime.ctx)
+  ^bb1(%0: !tower_runtime.ctx):  // pred: ^bb0
+    %1 = tower_runtime.check_swap %0 : !tower_runtime.ctx
+    %2 = tower_runtime.increment_count %1 : !tower_runtime.ctx
+    %3 = memref.load %alloca[%c0] : memref<1xi32>
+    %4 = tower_runtime.check_swap %2 : !tower_runtime.ctx
+    %5 = tower_runtime.increment_count %4 : !tower_runtime.ctx
+    %c6_i32 = arith.constant 6 : i32
+    %6 = tower_runtime.check_swap %5 : !tower_runtime.ctx
+    %7 = tower_runtime.increment_count %6 : !tower_runtime.ctx
+    %8 = arith.cmpi slt, %3, %c6_i32 : i32
+    %9 = tower_runtime.check_swap %7 : !tower_runtime.ctx
+    %10 = tower_runtime.increment_count %9 : !tower_runtime.ctx
+    cf.cond_br %8, ^bb3(%10 : !tower_runtime.ctx), ^bb2(%10 : !tower_runtime.ctx)
+  ^bb2(%11: !tower_runtime.ctx):  // pred: ^bb1
+    %12 = tower_runtime.check_swap %11 : !tower_runtime.ctx
+    %13 = call @a_func() : () -> i32
+    return %13 : i32
+  ^bb3(%14: !tower_runtime.ctx):  // pred: ^bb1
+    %15 = tower_runtime.check_swap %14 : !tower_runtime.ctx
+    %16 = call @b_func() : () -> i32
+    return %16 : i32
+  }
+}
+```
+This representation needs a few custom lowering passes ([`--shim-function`](https://github.com/AaronStGeorge/jit-calc-experiments/blob/eb01f6996c6c13cb7d303c2893d5192308766cc6/include/jit-calc-mlir/Dialect/TowerRuntime/Transforms/Passes.td#L6-L17), [`--convert-tower-runtime-to-llvm`](https://github.com/AaronStGeorge/jit-calc-experiments/blob/eb01f6996c6c13cb7d303c2893d5192308766cc6/include/jit-calc-mlir/Conversion/Passes.td#L18-L27)), but can otherwise some slapped together [LLVM mumbo jumbo](https://github.com/AaronStGeorge/jit-calc-experiments/blob/eb01f6996c6c13cb7d303c2893d5192308766cc6/experiments/slow-roll-fibonacci-2/srf2-driver/srf2-driver.cpp) can lower the above representation down to executable code. The result turns out to work very similar to how [`jit-calc`](../jit-calc) worked.
 
 ## What
 
