@@ -585,6 +585,7 @@ def compile_wasm(wasm_module: wasm.Module, debug: bool) -> mlir.Module:
 def main():
     parser = argparse.ArgumentParser(description="Translate wasm to mlir")
     parser.add_argument("wasm_file", type=str, help="Wasm file to load")
+    parser.add_argument("--output_path", type=str, help="Where to write output")
 
     prog_args = parser.parse_args()
 
@@ -595,7 +596,11 @@ def main():
 
         with mlir.Context():
             mlir_module = compile_wasm(wasm_module, debug=False)
-            print(mlir_module)
+            if prog_args.output_path:
+                with open(prog_args.output_path, "w", encoding="utf-8") as file:
+                    file.write(str(mlir_module))
+            else:
+                print(mlir_module)
 
 
 if __name__ == "__main__":

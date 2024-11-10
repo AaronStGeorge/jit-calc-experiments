@@ -46,13 +46,13 @@ set(LIBS
   Wasm
   )
 
-add_llvm_executable(srf2-lsp-server
-  srf2-lsp-server.cpp
+add_llvm_executable(jit-calc-lsp-server
+        jit-calc-lsp-server.cpp
 
   DEPENDS
   ${LIBS}
   )
-target_link_libraries(srf2-lsp-server PRIVATE ${LIBS})
-llvm_update_compile_flags(srf2-lsp-server)
+target_link_libraries(jit-calc-lsp-server PRIVATE ${LIBS})
+llvm_update_compile_flags(jit-calc-lsp-server)
 
-mlir_check_all_link_libraries(srf2-lsp-server)
+mlir_check_all_link_libraries(jit-calc-lsp-server)

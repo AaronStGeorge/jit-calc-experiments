@@ -7,9 +7,9 @@ set(LLVM_LINK_COMPONENTS
   AsmParser
   )
 
-add_llvm_executable(srf2-opt srf2-opt.cpp)
-llvm_update_compile_flags(srf2-opt)
-target_link_libraries(srf2-opt PRIVATE
+add_llvm_executable(jit-calc-opt jit-calc-opt.cpp)
+llvm_update_compile_flags(jit-calc-opt)
+target_link_libraries(jit-calc-opt PRIVATE
   ${dialect_libs}
   ${conversion_libs}
   ${extension_libs}
@@ -33,5 +33,5 @@ target_link_libraries(srf2-opt PRIVATE
   MLIRToLLVMIRTranslationRegistration
   )
 
-mlir_check_all_link_libraries(srf2-opt)
-llvm_update_compile_flags(srf2-opt)
+mlir_check_all_link_libraries(jit-calc-opt)
+llvm_update_compile_flags(jit-calc-opt)

@@ -65,7 +65,7 @@ config.jit_calc_experiments_tools_dir = os.path.join(
 )
 tool_dirs = [config.jit_calc_experiments_tools_dir, config.llvm_tools_dir]
 tools = [
-    "srf2-opt",
+    "jit-calc-opt",
     "mlir-opt",
     "mlir-cpu-runner",
 ]

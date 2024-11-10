@@ -23,6 +23,7 @@ include(AddLLVM)
 include(AddMLIR)
 include(HandleLLVMOptions)
 include(MLIRDetectPythonEnv)
+include(cmake/JitCalcUtils.cmake)
 
 # find whatever python you configured with -DPython3_EXECUTABLE
 mlir_configure_python_dev_packages()
@@ -37,6 +38,7 @@ add_definitions(${LLVM_DEFINITIONS})
 add_subdirectory(include)
 add_subdirectory(lib)
 add_subdirectory(python)
+add_subdirectory(tools)
 add_subdirectory(experiments)
 
 # JIT_CALC_EXPERIMENTS_(SOURCE_DIR|BINARY_DIR) are required by testing build

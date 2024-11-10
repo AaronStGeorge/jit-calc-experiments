@@ -72,7 +72,7 @@ add_mlir_python_common_capi_library(JitCalcPythonCAPI
 # Instantiation of all Python modules
 ################################################################################
 
-add_mlir_python_modules(JitCalePythonModules
+add_mlir_python_modules(JitCalcPythonModules
   ROOT_PREFIX "${MLIR_BINARY_DIR}/python_packages/jit_calc/jitcalc"
   INSTALL_PREFIX "python_packages/jit_calc/jitcalc"
   DECLARED_SOURCES
