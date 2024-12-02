@@ -1,4 +1,4 @@
 add_subdirectory(count-to-n)
 add_subdirectory(jit-calc)
 add_subdirectory(slow-roll-fibonacci-2)
-add_subdirectory(test-stuff-out)
+add_subdirectory(hover-game)

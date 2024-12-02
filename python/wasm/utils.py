@@ -1,7 +1,7 @@
+import struct
 from ast import AST
 from itertools import islice
-import struct
-from typing import Callable, Iterator, List
+from typing import Callable, Iterator, List, TypeVar
 
 
 def decode_unsigned(stream: Iterator[bytes]) -> int:
@@ -110,3 +110,63 @@ def decode_float64(stream):
     "l" indicates 64-bit IEEE 754 floating point (AKA a C double)
     """
     return struct.unpack("<d", bytes(islice(stream, 8)))[0]
+
+
+class BytesIterator(Iterator[bytes]):
+    """This exists, vs just using python's `iter` function on a bytes object, to
+    provide a nice __str__ method for debugging."""
+
+    def __init__(self, data: bytes):
+        self.data = data
+        self.index = 0
+
+    def __iter__(self):
+        return self
+
+    def __next__(self) -> int:
+        if self.index >= len(self.data):
+            raise StopIteration
+        value = self.data[self.index]
+        self.index += 1
+        return value
+
+    def __str__(self):
+        return str(self.data[self.index :])
+
+
+T = TypeVar("T")
+
+
+class CheckedIterator(Iterator[T]):
+    """Checks that expected_count items are pulled from wrapped iterator."""
+
+    def __init__(self, iterator: Iterator[T], expected_count: int):
+        self.iterator = iterator
+        self.count = 0
+        self.expected_count = expected_count
+
+    def __iter__(self):
+        return self
+
+    def __next__(self) -> T:
+        self.count += 1
+        if self.count > self.expected_count:
+            raise ValueError(
+                f"Expected {self.expected_count} items, but iterated over {self.count} items."
+            )
+        return next(self.iterator)
+
+    def __enter__(self):
+        self.count = 0
+        return self
+
+    def __exit__(self, exc_type, _, __) -> bool:
+        if exc_type is None:
+            # No exceptions occurred
+            if self.count != self.expected_count:
+                raise ValueError(
+                    f"Expected {self.expected_count} items, but iterated over {self.count} items."
+                )
+        else:
+            # An exception occurred; re-raise it
+            return False

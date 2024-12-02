@@ -2,11 +2,11 @@
 import argparse
 from abc import ABC
 from dataclasses import dataclass, field
-from typing import List, Optional, Dict, Callable, Any
+from typing import List, Optional, Dict, Callable
 
-import wasm
-import jitcalc.ir as mlir
 import jitcalc.extras.types as T
+import jitcalc.ir as mlir
+import wasm
 from jitcalc.dialects import (
     arith,
     cf,
@@ -287,6 +287,14 @@ class Translator(wasm.InstructionVisitor[None]):
 
         self.move_ip_to_block(block_after)
 
+    def comp_with_zero(
+        self, cond: mlir.Value, predicate: arith.CmpIPredicate
+    ) -> mlir.Value:
+        if cond.type != T.i64() and cond.type != T.i32():
+            raise ValueError("must be int type")
+        zero = arith.constant(cond.type, 0, ip=self.ip)
+        return arith.cmpi(predicate=predicate, lhs=cond, rhs=zero, ip=self.ip)
+
     # VISITOR FUNCTIONS ========================================================
 
     def visit_loop(self, instruction: wasm.loop) -> None:
@@ -358,10 +366,7 @@ class Translator(wasm.InstructionVisitor[None]):
         new_block = self.block.create_after(tower_runtime.ContextType.get())
         val = self.pop()
         if val.type != T.bool():
-            if val.type != T.i64() and val.type != T.i32():
-                raise ValueError("must be int type")
-            zero = arith.constant(val.type, 0, ip=self.ip)
-            val = arith.cmpi(arith.CmpIPredicate.ne, lhs=val, rhs=zero, ip=self.ip)
+            val = self.comp_with_zero(val, arith.CmpIPredicate.ne)
         self.last_context = tower_runtime.increment_count(self.last_context, ip=self.ip)
         cf.cond_br(
             val,
@@ -439,6 +444,15 @@ class Translator(wasm.InstructionVisitor[None]):
                 arith.CmpIPredicate.slt, lhs=lhs, rhs=rhs, ip=self.ip
             )
         )
+
+    @wrap_with_increment_and_check_swap
+    def visit_select(self, instruction: wasm.select) -> T:
+        cond = self.pop()
+        true = self.pop()
+        false = self.pop()
+        if cond.type != T.bool():
+            cond = self.comp_with_zero(cond, arith.CmpIPredicate.eq)
+        self.push(arith.select(cond, true, false, ip=self.ip))
 
 
 def compile_wasm(wasm_module: wasm.Module, debug: bool) -> mlir.Module:
@@ -591,8 +605,8 @@ def main():
 
     with open(prog_args.wasm_file, "rb") as file:
         # decode module
-        stream = iter(bytes(file.read()))
-        wasm_module = wasm.decode(stream)
+        module_bytes = bytes(file.read())
+        wasm_module = wasm.decode(module_bytes)
 
         with mlir.Context():
             mlir_module = compile_wasm(wasm_module, debug=False)

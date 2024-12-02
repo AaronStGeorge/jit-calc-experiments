@@ -1,26 +1,18 @@
-from dataclasses import dataclass
-from typing import Generic, Iterator, List, Mapping, Tuple, Dict, TypeVar
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
+from typing import Generic, Iterator, List, Tuple, Dict, TypeVar
 
+from .indices import (
+    func_idx,
+    local_idx,
+    label_idx,
+)
 from .utils import (
-    decode_float32,
-    decode_float64,
     decode_signed,
     decode_unsigned,
     decode_valtype,
 )
-from .wasm_types import i32, i64, f32, f64
-from .indices import (
-    type_idx,
-    func_idx,
-    table_idx,
-    mem_idx,
-    global_idx,
-    elem_idx,
-    data_idx,
-    local_idx,
-    label_idx,
-)
+from .wasm_types import i32
 
 T = TypeVar("T")
 
@@ -192,6 +184,18 @@ class call(Instruction):
 
 
 @dataclass
+class select(Instruction):
+    name: str = "select"
+
+    def accept(self, visitor: "Visitor[T]") -> T:
+        return visitor.visit_select(self)
+
+    @classmethod
+    def decode(cls, stream: Iterator[bytes]):
+        return cls()
+
+
+@dataclass
 class local_get(Instruction):
     args: Tuple[local_idx]
     name: str = "local.get"
@@ -287,6 +291,7 @@ def op_code_to_generated_class() -> Dict[int, Instruction]:
         0xD: br_if,
         0xF: wasm_return,
         0x10: call,
+        0x1B: select,
         0x20: local_get,
         0x21: local_set,
         0x22: local_tee,
@@ -321,6 +326,10 @@ class _GeneratedVisitor(ABC, Generic[T]):
 
     @abstractmethod
     def visit_call(self, instruction: call) -> T:
+        pass
+
+    @abstractmethod
+    def visit_select(self, instruction: select) -> T:
         pass
 
     @abstractmethod

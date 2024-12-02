@@ -99,6 +99,8 @@ if __name__ == "__main__":
         0x0F: ("wasm_return", []),  #
         0x10: ("call", ["func_idx"]),  #
         # ===
+        0x1B: ("select", []),  #
+        # ===
         0x20: ("local.get", ["local_idx"]),  #
         0x21: ("local.set", ["local_idx"]),  #
         0x22: ("local.tee", ["local_idx"]),  #

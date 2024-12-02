@@ -3,8 +3,8 @@ from .wasm_types import *
 from .instructions import *
 
 
-def decode(stream: Iterator[bytes]) -> Module:
+def decode(module: bytes) -> Module:
     """
     decode encoded wasm module
     """
-    return Module.decode(stream)
+    return Module.decode(module)

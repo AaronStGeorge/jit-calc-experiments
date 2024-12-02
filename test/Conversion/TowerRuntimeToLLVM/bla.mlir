@@ -1,4 +1,4 @@
-// RUN: srf2-opt %s \
+// RUN: jit-calc-opt %s \
 // RUN: 	-convert-tower-runtime-to-llvm
 
 func.func @entry(%arg0 : !tower_runtime.ctx) -> () {

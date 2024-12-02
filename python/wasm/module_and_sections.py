@@ -9,6 +9,8 @@ from .utils import (
     decode_unsigned,
     decode_valtype,
     decode_vector,
+    CheckedIterator,
+    BytesIterator,
 )
 from .instructions import Instruction, decode_instruction_list
 from .indices import (
@@ -284,8 +286,12 @@ class Code:
 
     @classmethod
     def decode(cls, stream: Iterator[bytes]) -> "ExportSection":
-        size = next(stream)
-        return cls(decode_vector(stream, Local.decode), Expression.decode(stream))
+        size = decode_unsigned(stream)
+        with CheckedIterator(stream, expected_count=size) as checked_stream:
+            return cls(
+                decode_vector(checked_stream, Local.decode),
+                Expression.decode(checked_stream),
+            )
 
 
 @dataclass
@@ -310,7 +316,8 @@ class Module:
     code_sec: List[Code] = field(default_factory=list)
 
     @classmethod
-    def decode(cls, stream: Iterator[bytes]):
+    def decode(cls, module: bytes):
+        stream = BytesIterator(module)
         header = bytes(islice(stream, 4))
         if header != b"\x00asm":
             raise ValueError("Expected .wasm")
@@ -335,14 +342,15 @@ class Module:
             try:
                 sec_id = next(stream)
                 size = decode_unsigned(stream)
+
                 # just skip custom sections for now
                 if sec_id == 0:
                     stream = islice(stream, size, None)
                     continue
 
                 sec_name, decode_func = sec_id_to_name_and_parsing_func[sec_id]
-
-                sections[sec_name] = decode_vector(stream, decode_func)
+                with CheckedIterator(stream, expected_count=size) as checked_stream:
+                    sections[sec_name] = decode_vector(checked_stream, decode_func)
             except StopIteration:
                 break
         return cls(**sections)
