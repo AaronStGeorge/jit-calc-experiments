@@ -10,15 +10,15 @@ def decode_unsigned(stream: Iterator[bytes]) -> int:
     length encoding.
 
     The basic idea of the encoding is: you grab a byte at a time, that byte
-    contains 7 bits of the the encoded number, and one bit that tells you if the
+    contains 7 bits of the encoded number, and one bit that tells you if the
     next byte should be consumed or not.
 
     0b_XXXX_XXXX
        ^^      ^
        ||      |
        | ------
-       |    |
-       |    > 7 bits of encoded number
+       |   |
+       |   > 7 bits of encoded number
        > indicates if this is the last "chunk" or not
 
     https://webassembly.github.io/spec/core/binary/values.html#integers

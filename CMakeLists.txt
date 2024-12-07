@@ -46,4 +46,7 @@ add_subdirectory(experiments)
 # JIT_CALC_EXPERIMENTS_(SOURCE_DIR|BINARY_DIR) are required by testing build
 set(JIT_CALC_EXPERIMENTS_SOURCE_DIR ${PROJECT_SOURCE_DIR})
 set(JIT_CALC_EXPERIMENTS_BINARY_DIR ${PROJECT_BINARY_DIR})
+
+add_custom_target(JitCalcUnitTests)
+add_subdirectory(unittests)
 add_subdirectory(test)

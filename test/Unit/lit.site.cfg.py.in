@@ -1,0 +1,10 @@
+@LIT_SITE_CFG_IN_HEADER@
+
+import sys
+
+config.llvm_tools_dir = lit_config.substitute("@LLVM_TOOLS_DIR@")
+config.llvm_build_mode = lit_config.substitute("@LLVM_BUILD_MODE@")
+config.jit_calc_experiments_obj_root = "@JIT_CALC_EXPERIMENTS_BINARY_DIR@"
+
+# Let the main config do the real work.
+lit_config.load_config(config, "@JIT_CALC_EXPERIMENTS_SOURCE_DIR@/test/Unit/lit.cfg.py")

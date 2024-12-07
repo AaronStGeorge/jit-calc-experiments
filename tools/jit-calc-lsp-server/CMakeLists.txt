@@ -40,6 +40,7 @@ set(LIBS
   MLIRParser
   MLIRPass
   MLIRTransforms
+  MLIRTensorAllExtensions
   MLIRTransformUtils
   MLIRSupport
   MLIRIR
