@@ -64,7 +64,7 @@ function(wasm_to_mlir INPUT_WASM_FILE OUT_OUTPUT)
     set(${OUT_OUTPUT} ${OUTPUT} PARENT_SCOPE)
 endfunction()
 
-function(mlir_to_llvm INPUT_MLIR_FILE OUT_OUTPUT)
+function(mlir_to_llvm INPUT_MLIR_FILE OUT_OUTPUT PREFIX)
     get_filename_component(FILE_NAME ${INPUT_MLIR_FILE} NAME_WE)
     set(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/${FILE_NAME}.ll")
 
@@ -74,7 +74,7 @@ function(mlir_to_llvm INPUT_MLIR_FILE OUT_OUTPUT)
             COMMAND
             $<TARGET_FILE:jit-calc-opt>
             ${INPUT_MLIR_FILE}
-            --shim-function='function-to-shim=tick'
+            --shim-function='function-to-shim=tick prefix=${PREFIX}'
             --convert-tower-runtime-to-llvm
             --convert-vector-to-scf
             --convert-scf-to-cf
@@ -119,17 +119,24 @@ function(llvm_to_object_file INPUT_LLVM_FILE OUT_OUTPUT)
     set(${OUT_OUTPUT} ${OUTPUT} PARENT_SCOPE)
 endfunction()
 
-function(compile_player_code INPUT_C_FILE OUT_OBJECT_FILE)
+function(compile_player_code INPUT_C_FILE OUT_OBJECT_FILE PREFIX)
     c_to_wasm(${INPUT_C_FILE} WASM_FILE)
     wasm_to_mlir(${WASM_FILE} MLIR_FILE)
-    mlir_to_llvm(${MLIR_FILE} LL_FILE)
+    mlir_to_llvm(${MLIR_FILE} LL_FILE "${PREFIX}")
     llvm_to_object_file(${LL_FILE} OBJECT_FILE)
 
     set(${OUT_OBJECT_FILE} ${OBJECT_FILE} PARENT_SCOPE)
 endfunction()
 
 macro(add_player_code_library LIBRARY_NAME INPUT_C_FILE)
-    compile_player_code(${INPUT_C_FILE} OBJECT_FILE)
+    set(options)
+    set(oneValueArgs PREFIX)
+    set(multiValueArgs)
+
+    # Parse arguments after LIBRARY_NAME and INPUT_C_FILE
+    cmake_parse_arguments(ARG "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+
+    compile_player_code(${INPUT_C_FILE} OBJECT_FILE "${ARG_PREFIX}")
     add_library(${LIBRARY_NAME} INTERFACE)
     set_target_properties(${LIBRARY_NAME} PROPERTIES
             INTERFACE_SOURCES "${OBJECT_FILE}")

@@ -7,11 +7,11 @@
 #include "mlir/IR/ImplicitLocOpBuilder.h"
 #include "mlir/IR/Location.h"
 #include "mlir/IR/SymbolTable.h"
+#include "mlir/Interfaces/FunctionInterfaces.h"
+#include "mlir/Support/LogicalResult.h"
 
 #include "jit-calc-mlir/Dialect/TowerRuntime/IR/TowerRuntimeOps.h"
 #include "jit-calc-mlir/Dialect/TowerRuntime/Transforms/Passes.h"
-#include "mlir/Interfaces/FunctionInterfaces.h"
-#include "mlir/Support/LogicalResult.h"
 
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/SmallVector.h"
@@ -94,6 +94,12 @@ public:
       return;
     }
     auto funcToShim = cast<func::FuncOp>(toShimOp);
+
+    // 1.a. apply prefix if requested
+    if (!prefix.empty()) {
+      funcToShim.setName(
+          llvm::formatv("{0}_{1}", prefix, functionToShim).str());
+    }
 
     // 2. create shim function prototype
     builder.setInsertionPointToStart(&module.getBodyRegion().front());

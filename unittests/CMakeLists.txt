@@ -2,4 +2,4 @@ function(add_jit_calc_unittest test_dirname)
   add_unittest(JitCalcUnitTests ${test_dirname} ${ARGN})
 endfunction()
 
-add_jit_calc_unittest(FakeTests FakeTests.cpp)
+add_subdirectory(integration)

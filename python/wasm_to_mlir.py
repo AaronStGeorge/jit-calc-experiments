@@ -537,6 +537,7 @@ def compile_wasm(wasm_module: wasm.Module, debug: bool) -> mlir.Module:
                     inputs=input_types,
                     results=wasm_func.results,
                 ),
+                visibility="private",
                 ip=ip,
             )
             entry_block = mlir_func.add_entry_block()

@@ -1,28 +1,22 @@
 # jit-calc-experiments tests
 
-## Running a specific test suite
-There should be a target in the build system for any given suite.
-
+## Running the tests
 ```
 cmake --build build --target check-jit-calc-experiments
 ```
 
-## Running `lit` tests
-### what's `lit`?
+## Where are the tests?
+`jit-calc-experiments` uses LLVM's testing infrastructure.
+It's a little odd frankly.
+`lit` tests are in the `test` directory, and "unit" tests---as LLVM refers to C++ tests using [gtest](https://github.com/google/googletest)---are in the `unittests` directory.
+LLVM cajoles all the tests "unit" and `lit` into the `check-jit-calc-experiments` CMake target by creating an `Unit` subdirectory in the `test` directory that just points at the tests in the `unittests` directory.
 
-Most of the tests here use [`lit`](https://llvm.org/docs/CommandGuide/lit.html), an LLVM tool for gold file testing.
-Any gold file testing tool will need an expected output, some command to run to generate the expected output, and in most cases some sort of input file.
-With `lit`, rather than specifying a “golden” output file for a given input file you tell the tool what output to expect using commands.
-The commands vs output file approach cuts down on the volume of output one has to spell out and diff, it's a little more surgical.
-You provide commands to `lit` by embedding them as comments in the input file.
+### what's a `lit` test?
+
+[`lit`](https://llvm.org/docs/CommandGuide/lit.html) is an LLVM tool for gold file testing.
+With `lit`, rather than specifying a “golden” output file associated a given input file, you embed the expected output in comments.
 For example: `// RUN: some_command %s` and `// CHECK: <expected output>`.
-Embedding commands in comments is a little strange but it preserves the ability to run an input file outside of the testing framework as one normally would, so it's nice too.
-
-### Running a suite of `lit` tests
-A suite of lit tests can be run just like any other suite of tests.
-```
-cmake --build build --target my-lit-suite
-```
+Embedding commands in comments is a little strange, but it preserves the ability to run an input file outside of the testing framework, so it's nice too.
 
 ### Running an individual `lit` test
 
