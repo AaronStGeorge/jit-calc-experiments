@@ -3,6 +3,7 @@
 #include "raylib.h"
 
 #include <cassert>
+#include <cstdint>
 
 extern "C" void tick_shim(TowerRuntimeContext *, void *, void *);
 
@@ -16,28 +17,7 @@ const Color colors[3] = {
     GREEN,
 };
 
-// launchpad handles setup for, calling into, and returning from the generated
-// code.
-void launchpad(TowerRuntimeContext *ctx,
-               void (*entry)(TowerRuntimeContext *, void *, void *), void *in,
-               void *out) {
-  // Swap out immediately, the first call is just to get things set up so we can
-  // call into game code with a simple `swap` later rather than needing `start`
-  // with the arguments and stuff.
-  swap(ctx->thread, ctx->main);
-
-  entry(ctx, in, out);
-
-  stop(ctx);
-  assert(false && "This should be unreachable! If you're here, you probably "
-                  "restarted a stoped thread, don't do that.");
-}
-
 int main(int argc, char **argv) {
-  // contexts for game code and player code
-  struct MachineState gameCtx;
-  struct MachineState playerCodeCtx;
-
   // arguments to player code
   int input = -1;
   int completed = -1;
@@ -48,14 +28,9 @@ int main(int argc, char **argv) {
 
   // setup stack for player code
   size_t stackSize = 8 * 1024;
-  char *stack = (char *)calloc(stackSize, sizeof(char));
+  auto stack = (uint8_t *)calloc(stackSize, sizeof(char));
 
-  TowerRuntimeContext ctx{
-      .main = &gameCtx,
-      .thread = &playerCodeCtx,
-      .count = 0,
-      .limit = 256,
-  };
+  auto trctx = CPPTowerRuntimeContext(stack, stackSize, 256);
 
   InitWindow(screenWidth, screenHeight, "classic game: asteroids");
   SetTargetFPS(60);
@@ -75,24 +50,16 @@ int main(int argc, char **argv) {
     if (needsSetup) {
       needsSetup = false;
 
-      // set the link register to our setup/launch function. ARM's RET
-      // instruction will return (aka jump) to whatever function we set here.
-      // You can't set the link register like this from C, but the co-routine
-      // start function is written in assembly.
-      playerCodeCtx.lr = (uint64_t)launchpad;
-
-      // set stack for thread context
-      playerCodeCtx.sp = (uint64_t)&stack[stackSize];
-      playerCodeCtx.fp = (uint64_t)&stack[stackSize];
+      trctx = CPPTowerRuntimeContext(stack, stackSize, 256);
 
       input = hover;
 
       // Start uses pointers to make the ABI simpler, the function is
       // implemented in assembly so such things matter.
-      start(&ctx, tick_shim, &input, &computing);
+      start(&trctx.ctx, tick_shim, &input, &computing);
     }
 
-    if (swap(/*from*/ ctx.main, /*to*/ ctx.thread)) {
+    if (swap(/*from*/ trctx.ctx.main, /*to*/ trctx.ctx.thread)) {
       completed = computing;
       needsSetup = true;
     }

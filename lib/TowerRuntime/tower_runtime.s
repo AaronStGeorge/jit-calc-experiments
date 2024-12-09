@@ -81,11 +81,6 @@ _swap:
 _stop:
 	// Load pointer to main context. We're swapping to this context.
 	ldr x9,  [x0]
-	// Load pointer to thread context. We're swapping from this context.
-	ldr x10, [x0, #8]
-
-	// Dump current machine state into thread context.
-	READ x10, x11
 
 	// Load machine state from main context.
 	WRITE x9, x11

@@ -87,23 +87,6 @@ llvm::orc::ThreadSafeModule getLLVMIRFromStdin() {
                                      std::move(llvmContext));
 }
 
-// launchpad handles setup for, calling into, and returning from the generated
-// code.
-void launchpad(TowerRuntimeContext *ctx,
-               void (*entry)(TowerRuntimeContext *, void *, void *), void *in,
-               void *out) {
-  // Swap out immediately, the first call is just to get things set up so we can
-  // call into game code with a simple `swap` later rather than needing `start`
-  // with the arguments and stuff.
-  swap(ctx->thread, ctx->main);
-
-  entry(ctx, in, out);
-
-  stop(ctx);
-  llvm_unreachable("This should be unreachable! If you're here, you probably "
-                   "restarted a stoped thread, don't do that.");
-}
-
 int fib(int n) {
   int i = 0;
   int j = 1;
@@ -158,10 +141,6 @@ int main(int argc, char *argv[]) {
   void (*entry)(TowerRuntimeContext *, void *, void *) =
       entryAddr.toPtr<void(TowerRuntimeContext *, void *, void *)>();
 
-  // contexts for main function and our "thread" that will run fibonacci
-  struct MachineState main_ctx;
-  struct MachineState thread_ctx;
-
   // arguments
   int in = -1;
   int slowRollCompleted = -1;
@@ -171,14 +150,9 @@ int main(int argc, char *argv[]) {
 
   // setup stack
   size_t stackSize = 8 * 1024;
-  char *stack = (char *)calloc(stackSize, sizeof(char));
+  uint8_t *stack = (uint8_t *)calloc(stackSize, sizeof(char));
 
-  TowerRuntimeContext ctx{
-      .main = &main_ctx,
-      .thread = &thread_ctx,
-      .count = 0,
-      .limit = 256,
-  };
+  CPPTowerRuntimeContext trctx = CPPTowerRuntimeContext(stack, stackSize, 256);
 
   std::cout << "Fibonacci game 2!" << std::endl;
   std::cout << "game";
@@ -189,24 +163,16 @@ int main(int argc, char *argv[]) {
     if (doesSlowRollNeedSetup) {
       doesSlowRollNeedSetup = false;
 
-      // set the link register to our setup/launch function. ARM's RET
-      // instruction will return (aka jump) to whatever function we set here.
-      // You can't set the link register like this from C, but the co-routine
-      // start function is written in assembly.
-      thread_ctx.lr = (uint64_t)launchpad;
-
-      // set stack for thread context
-      thread_ctx.sp = (uint64_t)&stack[stackSize];
-      thread_ctx.fp = (uint64_t)&stack[stackSize];
+      trctx = CPPTowerRuntimeContext(stack, stackSize, 256);
 
       in = i;
 
       // Start uses pointers to make the ABI simpler, the function is
       // implemented in assembly so such things matter.
-      start(&ctx, entry, &in, &slowRollComputing);
+      start(&trctx.ctx, entry, &in, &slowRollComputing);
     }
 
-    if (swap(/*from*/ ctx.main, /*to*/ ctx.thread)) {
+    if (swap(/*from*/ trctx.ctx.main, /*to*/ trctx.ctx.thread)) {
       slowRollCompleted = slowRollComputing;
       doesSlowRollNeedSetup = true;
     }

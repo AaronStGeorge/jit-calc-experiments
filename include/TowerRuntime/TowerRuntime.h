@@ -1,6 +1,7 @@
 #ifndef TOWER_RUNTIME_H
 #define TOWER_RUNTIME_H
 
+#include <cstddef>
 #include <cstdint>
 
 struct MachineState {
@@ -23,11 +24,43 @@ struct MachineState {
   uint64_t x28;
 };
 
+struct TowerRuntimeContext;
+
+// launchpad handles setup for, calling into, and returning from the generated
+// code.
+void launchpad(TowerRuntimeContext *ctx,
+               void (*entry)(TowerRuntimeContext *, void *, void *), void *in,
+               void *out);
+
+// `TowerRuntimeContext` must be ABI compatible with the MLIR type
+// `!tower_runtime.ctx`. MLIR assumes `!tower_runtime.ctx` is laid out as a blob
+// with two pointers (main, thread) then two 64-bit integers (count, limit). As
+// long as `TowerRuntimeContext` is a POD type C++ guarantees the expected
+// layout; assuming no one changes the order of items in the struct. A POD type
+// has no constructors, destructors, or really any C++ feature. If you use a C++
+// feature the compiler is free to lay the type out any damn way it wants, which
+// won't be the way MLIR wants (probably).
 struct TowerRuntimeContext {
   MachineState *main;
   MachineState *thread;
   uint64_t count;
   uint64_t limit;
+};
+
+// `CPPTowerRuntimeContext` provides a nice way to "hold" a
+// `TowerRuntimeContext` in C++. It isn't sent into MLIR, so we can use any C++
+// feature we want.
+struct CPPTowerRuntimeContext {
+  MachineState main;
+  MachineState thread;
+  TowerRuntimeContext ctx;
+
+  CPPTowerRuntimeContext(uint8_t *stack, size_t stackSize, uint64_t limit,
+                         uint64_t count = 0,
+                         void (*launch)(TowerRuntimeContext *,
+                                        void (*)(TowerRuntimeContext *, void *,
+                                                 void *),
+                                        void *, void *) = launchpad);
 };
 
 extern "C" {
