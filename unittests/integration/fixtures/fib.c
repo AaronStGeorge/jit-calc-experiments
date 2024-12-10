@@ -1,4 +1,4 @@
-int fib(int n) {
+int tick(int n) {
   int i = 0;
   int j = 1;
 
