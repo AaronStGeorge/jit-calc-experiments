@@ -2,8 +2,9 @@
 
 #include "gtest/gtest.h"
 
-
 namespace {
+// tests for fixtures/simple.c =================================================
+
 extern "C" void simple_tick_shim(TowerRuntimeContext *, void *, void *);
 
 TEST(IntegrationTests, Simple) {
@@ -15,8 +16,6 @@ TEST(IntegrationTests, Simple) {
   auto stack = (uint8_t *)calloc(stackSize, sizeof(char));
   CPPTowerRuntimeContext trctx(stack, stackSize, /*limit*/ 256);
 
-  // Start uses pointers to make the ABI simpler, the function is
-  // implemented in assembly so such things matter.
   start(&trctx.ctx, simple_tick_shim, &input, &output);
 
   ASSERT_TRUE(swap(/*from*/ trctx.ctx.main, /*to*/ trctx.ctx.thread));
@@ -26,7 +25,10 @@ TEST(IntegrationTests, Simple) {
   free(stack);
 }
 
+// tests for fixtures/add.c ====================================================
+
 extern "C" void add_tick_shim(TowerRuntimeContext *, void *, void *);
+
 struct Thing {
   int a;
   int b;
@@ -41,8 +43,6 @@ TEST(IntegrationTests, Add) {
   auto stack = (uint8_t *)calloc(stackSize, sizeof(char));
   CPPTowerRuntimeContext trctx(stack, stackSize, /*limit*/ 256);
 
-  // Start uses pointers to make the ABI simpler, the function is
-  // implemented in assembly so such things matter.
   start(&trctx.ctx, add_tick_shim, &input, &output);
 
   ASSERT_TRUE(swap(/*from*/ trctx.ctx.main, /*to*/ trctx.ctx.thread));
@@ -52,15 +52,13 @@ TEST(IntegrationTests, Add) {
   free(stack);
 }
 
-extern "C" void simple_cond_tick_shim(TowerRuntimeContext *, void *, void *);
-extern "C" int a_func() {
-  return 69;
-}
-extern "C" int b_func() {
-  return 420;
-}
+// tests for fixtures/simple_cond.c ============================================
 
-TEST(IntegrationTests, SimpleCond ) {
+extern "C" void simple_cond_tick_shim(TowerRuntimeContext *, void *, void *);
+extern "C" int a_func() { return 69; }
+extern "C" int b_func() { return 420; }
+
+TEST(IntegrationTests, SimpleCond) {
   // arguments to player code
   int input = 9;
   int output = -1;
@@ -69,8 +67,6 @@ TEST(IntegrationTests, SimpleCond ) {
   auto stack = (uint8_t *)calloc(stackSize, sizeof(char));
   CPPTowerRuntimeContext trctx(stack, stackSize, /*limit*/ 256);
 
-  // Start uses pointers to make the ABI simpler, the function is
-  // implemented in assembly so such things matter.
   start(&trctx.ctx, simple_cond_tick_shim, &input, &output);
 
   ASSERT_TRUE(swap(/*from*/ trctx.ctx.main, /*to*/ trctx.ctx.thread));
@@ -79,6 +75,8 @@ TEST(IntegrationTests, SimpleCond ) {
 
   free(stack);
 }
+
+// tests for fixtures/fib.c ====================================================
 
 extern "C" void fib_tick_shim(TowerRuntimeContext *, void *, void *);
 
@@ -91,8 +89,6 @@ TEST(IntegrationTests, Fib) {
   auto stack = (uint8_t *)calloc(stackSize, sizeof(char));
   CPPTowerRuntimeContext trctx(stack, stackSize, /*limit*/ 256);
 
-  // Start uses pointers to make the ABI simpler, the function is
-  // implemented in assembly so such things matter.
   start(&trctx.ctx, fib_tick_shim, &input, &output);
 
   // fib(16) should take more than 256 instructions to complete

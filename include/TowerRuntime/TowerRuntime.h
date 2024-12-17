@@ -24,14 +24,6 @@ struct MachineState {
   uint64_t x28;
 };
 
-struct TowerRuntimeContext;
-
-// launchpad handles setup for, calling into, and returning from the generated
-// code.
-void launchpad(TowerRuntimeContext *ctx,
-               void (*entry)(TowerRuntimeContext *, void *, void *), void *in,
-               void *out);
-
 // `TowerRuntimeContext` must be ABI compatible with the MLIR type
 // `!tower_runtime.ctx`. MLIR assumes `!tower_runtime.ctx` is laid out as a blob
 // with two pointers (main, thread) then two 64-bit integers (count, limit). As
@@ -47,9 +39,17 @@ struct TowerRuntimeContext {
   uint64_t limit;
 };
 
+// launchpad handles setup for, calling into, and returning from the generated
+// code.
+void launchpad(TowerRuntimeContext *ctx,
+               void (*entry)(TowerRuntimeContext *, void *, void *), void *in,
+               void *out);
+
 // `CPPTowerRuntimeContext` provides a nice way to "hold" a
-// `TowerRuntimeContext` in C++. It isn't sent into MLIR, so we can use any C++
-// feature we want.
+// `TowerRuntimeContext` in C++. As it never ventures into MLIR, we can loose
+// the full breadth of C++. Without a tasteful use of SFINAE CRTP
+// template<template<template<>> a C++ program really just isn't quite
+// :chef-kiss-emoji: ya'know?
 struct CPPTowerRuntimeContext {
   MachineState main;
   MachineState thread;
