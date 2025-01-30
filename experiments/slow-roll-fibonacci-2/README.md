@@ -5,7 +5,7 @@
 You'll need everything built, and you'll need to source [`source_me_to_setup_slow-roll-fibonacci-2_experiment.sh`](https://github.com/AaronStGeorge/jit-calc-experiments/blob/eb01f6996c6c13cb7d303c2893d5192308766cc6/source_me_to_setup_slow-roll-fibonacci-2_experiment.sh).
 
 ```shell
-$ python python/wasm_to_mlir.py test/experiments/slow-roll-fibonacci-2/fib.wasm \
+$ python python/wasm_to_mlir.py experiments/slow-roll-fibonacci-2/fixtures/fib.wasm \
 	| jit-calc-opt --shim-function='function-to-shim=fib' --convert-tower-runtime-to-llvm \
 	| srf2-driver
 ```
