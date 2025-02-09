@@ -15,13 +15,13 @@ An ARM64 linux machine would probably work as well, but an x86 machine definitel
 
 #### A `clang` that can compile WebAssembly, some other C++ build tools, and raylib
 
-On Mac, brew clang seems to handle WebAssembly.
+On Mac, brew `clang` seems to handle WebAssembly.
 Brew has the other stuff we need as well.
 
 ```sh
 $ brew install llvm cmake ninja pkg-config raylib
 ```
-Homebrew doesn't put clang on the regular homebrew path (IDK why).
+Homebrew doesn't put `clang` on the regular homebrew path (IDK why).
 So, outside of regular homebrew setup, you'll want to add this to your `.bashrc` or `.zshrc`.
 ```sh
 export PATH="/opt/homebrew/opt/llvm/bin:$PATH"
@@ -50,7 +50,7 @@ See MLIR python bindings virtual environment setup [docs](https://mlir.llvm.org/
 
 #### LLVM Source build
 
-Though `jit-calc-experiments` doesn't care _where_ LLVM is built, it requires a few `LLVM` utilities and projects that aren't part of some build you would just download from brew.
+Though `jit-calc-experiments` doesn't care _where_ LLVM is built, it requires a few LLVM utilities and projects that aren't part of some build you would just download from brew.
 We have to set a whole bunch of CMake flags to build LLVM with the right stuff.
 ```sh
 (mlirdev) $ mkdir llvm-project/build && cd llvm-project/build
@@ -138,7 +138,7 @@ At this point you should be able to run the tests
 
 ## Running `wasm_to_mlir.py`
 
-If you would like to run wasm_to_mlir.py, such as the `slow-roll-fibonacci-2` experiment
+If you want run `wasm_to_mlir.py`, maybe to run the `slow-roll-fibonacci-2` experiment,
 ```sh
 (mlirdev) $ python python/wasm_to_mlir.py experiments/slow-roll-fibonacci-2/fixtures/fib.wasm \
 	| jit-calc-opt --shim-function='function-to-shim=fib' --convert-tower-runtime-to-llvm \
@@ -146,7 +146,7 @@ If you would like to run wasm_to_mlir.py, such as the `slow-roll-fibonacci-2` ex
 ```
 you'll need to have the virtual environment active, and you'll need to set the `$PYTHONPATH` environment variable to pick up the MLIR python bindings.
 The above command also assumes that `jit-calc-opt` (one of the programs `jit-calc-experiments` builds) is on your `$PATH`.
-[`source_me_for_python_bindings.sh`](https://github.com/AaronStGeorge/jit-calc-experiments/blob/main/source_me_for_python_bindings.sh) will set your `$PATH` and `$PYTHONPATH`.
+[`source_me_for_python_bindings.sh`](https://github.com/AaronStGeorge/jit-calc-experiments/blob/main/source_me_for_python_bindings.sh) sets your `$PATH` and `$PYTHONPATH`.
 ```sh
 (mlirdev) $ source source_me_for_python_bindings.sh
 ```
