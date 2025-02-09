@@ -119,12 +119,12 @@ int main(int argc, char *argv[]) {
   // program into jit.
 #define RUNTIME_FUNCTION(f)                                                    \
   llvm::detail::DenseMapPair<llvm::orc::SymbolStringPtr,                       \
-                             llvm::orc::ExecutorSymbolDef>{                    \
-      jit->mangleAndIntern(#f),                                                \
-      {                                                                        \
-          llvm::orc::ExecutorAddr::fromPtr(f),                                 \
-          llvm::JITSymbolFlags::Exported,                                      \
-      },                                                                       \
+                             llvm::orc::ExecutorSymbolDef> {                   \
+    jit->mangleAndIntern(#f),                                                  \
+        {                                                                      \
+            llvm::orc::ExecutorAddr::fromPtr(f),                               \
+            llvm::JITSymbolFlags::Exported,                                    \
+        },                                                                     \
   }
   llvm::cantFail(jit->getMainJITDylib().define(llvm::orc::absoluteSymbols({
       RUNTIME_FUNCTION(dump),

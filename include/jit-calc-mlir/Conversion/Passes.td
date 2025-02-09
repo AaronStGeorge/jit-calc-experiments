@@ -12,7 +12,7 @@
 include "mlir/Pass/PassBase.td"
 
 //===----------------------------------------------------------------------===//
-// ArithToLLVM
+// TowerRuntimeToLLVM
 //===----------------------------------------------------------------------===//
 
 def TowerRuntimeToLLVMConversionPass : Pass<"convert-tower-runtime-to-llvm", "ModuleOp"> {

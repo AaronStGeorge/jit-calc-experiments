@@ -1,5 +1,7 @@
-#include "jit-calc-mlir-c/Dialect/TowerRuntime.h"
+#include "mlir/Bindings/Python/Diagnostics.h"
 #include "mlir/Bindings/Python/PybindAdaptors.h"
+
+#include "jit-calc-mlir-c/Dialect/TowerRuntime.h"
 
 using namespace mlir::python;
 using namespace mlir::python::adaptors;

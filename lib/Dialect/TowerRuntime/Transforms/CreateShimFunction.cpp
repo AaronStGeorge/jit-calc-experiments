@@ -21,9 +21,16 @@
 #include <string>
 
 #define DEBUG_TYPE "taco"
-namespace mlir::towerRuntime {
+
+namespace mlir {
+namespace towerRuntime {
 #define GEN_PASS_DEF_SHIMFUNCTION
 #include "jit-calc-mlir/Dialect/TowerRuntime/Transforms/Passes.h.inc"
+} // namespace towerRuntime
+} // namespace mlir
+
+using namespace mlir;
+using namespace mlir::towerRuntime;
 
 // Game code calls into generated code using a very general, type erased,
 // C++ interface that looks like:
@@ -65,9 +72,11 @@ namespace mlir::towerRuntime {
 // TODO: there should be some sort of type checking on the function to shim
 // I'm not sure what the best place to do that is, but it should happen
 // somewhere.
-class CreateShimFunction : public impl::ShimFunctionBase<CreateShimFunction> {
+class CreateShimFunction
+    : public towerRuntime::impl::ShimFunctionBase<CreateShimFunction> {
 public:
-  using impl::ShimFunctionBase<CreateShimFunction>::ShimFunctionBase;
+  using towerRuntime::impl::ShimFunctionBase<
+      CreateShimFunction>::ShimFunctionBase;
 
   void runOnOperation() final {
     if (functionToShim.empty()) {
@@ -157,4 +166,3 @@ public:
     builder.create<func::ReturnOp>(builder.getUnknownLoc());
   };
 };
-} // namespace mlir::towerRuntime

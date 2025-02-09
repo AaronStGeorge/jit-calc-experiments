@@ -227,7 +227,9 @@ struct RuntimeFunction {
   TypeRange results;
 };
 
-// Add prototypes for runtime functions defined in C++ (or whatever). Example:
+// Add prototypes for runtime functions defined in C++ (or whatever).
+//
+// Example:
 //   func.func private @swap(!llvm.ptr, !llvm.ptr) -> (i1)
 void addRuntimeFunctionPrototypes(
     MLIRContext *context, ModuleOp module,
@@ -281,6 +283,16 @@ struct TowerRuntimeToLLVMConversionPass
 
     ConversionTarget target(*context);
 
+    // Converting from
+    target.addIllegalDialect<towerRuntime::TowerRuntimeDialect>();
+
+    // Converting to
+    target.addLegalDialect<LLVM::LLVMDialect>();
+    target.addLegalDialect<arith::ArithDialect>();
+    target.addLegalDialect<scf::SCFDialect>();
+    target.addLegalDialect<memref::MemRefDialect>();
+    target.addLegalOp<func::ReturnOp>();
+
     // Ensure function signatures and all call ops are converted
     populateFunctionOpInterfaceTypeConversionPattern<func::FuncOp>(
         patterns, typeConverter);
@@ -303,12 +315,6 @@ struct TowerRuntimeToLLVMConversionPass
     target.addDynamicallyLegalOp<cf::CondBranchOp>([&](cf::CondBranchOp op) {
       return typeConverter.isLegal(op->getOperandTypes());
     });
-
-    target.addLegalDialect<LLVM::LLVMDialect>();
-    target.addLegalDialect<arith::ArithDialect>();
-    target.addLegalDialect<scf::SCFDialect>();
-    target.addLegalDialect<memref::MemRefDialect>();
-    target.addLegalOp<func::ReturnOp>();
 
     if (failed(applyPartialConversion(module, target, std::move(patterns))))
       signalPassFailure();
