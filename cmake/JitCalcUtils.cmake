@@ -8,6 +8,7 @@ list(APPEND WASM_TO_MLIR_PY_FILES "${CMAKE_SOURCE_DIR}/python/wasm_to_mlir.py")
 function(c_to_wasm INPUT_C_FILE OUT_OUTPUT)
     get_filename_component(FILE_NAME ${INPUT_C_FILE} NAME_WE)
     set(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/${FILE_NAME}.wasm")
+    file(RELATIVE_PATH REL_OUTPUT "${CMAKE_BINARY_DIR}" "${OUTPUT}")
 
     add_custom_command(
             OUTPUT ${OUTPUT}
@@ -27,7 +28,7 @@ function(c_to_wasm INPUT_C_FILE OUT_OUTPUT)
 
             WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 
-            COMMENT "Compiling to wasm"
+            COMMENT "Building WebAssembly module ${REL_OUTPUT}"
     )
 
     # https://stackoverflow.com/a/29894437
@@ -42,6 +43,7 @@ endfunction()
 function(wasm_to_mlir INPUT_WASM_FILE OUT_OUTPUT)
     get_filename_component(FILE_NAME ${INPUT_WASM_FILE} NAME_WE)
     set(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/${FILE_NAME}.mlir")
+    file(RELATIVE_PATH REL_OUTPUT "${CMAKE_BINARY_DIR}" "${OUTPUT}")
 
     add_custom_command(
             OUTPUT ${OUTPUT}
@@ -58,7 +60,7 @@ function(wasm_to_mlir INPUT_WASM_FILE OUT_OUTPUT)
 
             WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 
-            COMMENT "Using wasm_to_mlir.py to convert WASM to MLIR"
+            COMMENT "Building MLIR representation ${REL_OUTPUT}"
     )
 
     set(${OUT_OUTPUT} ${OUTPUT} PARENT_SCOPE)
@@ -67,6 +69,7 @@ endfunction()
 function(mlir_to_llvm INPUT_MLIR_FILE OUT_OUTPUT PREFIX)
     get_filename_component(FILE_NAME ${INPUT_MLIR_FILE} NAME_WE)
     set(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/${FILE_NAME}.ll")
+    file(RELATIVE_PATH REL_OUTPUT "${CMAKE_BINARY_DIR}" "${OUTPUT}")
 
     add_custom_command(
             OUTPUT ${OUTPUT}
@@ -93,7 +96,7 @@ function(mlir_to_llvm INPUT_MLIR_FILE OUT_OUTPUT PREFIX)
             mlir-translate
 
             WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-            COMMENT "Using jit-calc-opt and mlir-translate to convert MLIR to LLVM"
+            COMMENT "Building LLVM representation ${REL_OUTPUT}"
     )
 
     set(${OUT_OUTPUT} ${OUTPUT} PARENT_SCOPE)
@@ -102,6 +105,7 @@ endfunction()
 function(llvm_to_object_file INPUT_LLVM_FILE OUT_OUTPUT)
     get_filename_component(FILE_NAME ${INPUT_LLVM_FILE} NAME_WE)
     set(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/${FILE_NAME}.o")
+    file(RELATIVE_PATH REL_OUTPUT "${CMAKE_BINARY_DIR}" "${OUTPUT}")
 
     add_custom_command(
             OUTPUT ${OUTPUT}
@@ -113,7 +117,7 @@ function(llvm_to_object_file INPUT_LLVM_FILE OUT_OUTPUT)
             llc
 
             WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-            COMMENT "Using llc to convert LLVM to object file"
+            COMMENT "Building object file ${REL_OUTPUT}"
     )
 
     set(${OUT_OUTPUT} ${OUTPUT} PARENT_SCOPE)
