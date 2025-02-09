@@ -1,12 +1,15 @@
 #include "mlir/Bindings/Python/Diagnostics.h"
-#include "mlir/Bindings/Python/PybindAdaptors.h"
+#include "mlir/Bindings/Python/NanobindAdaptors.h"
 
 #include "jit-calc-mlir-c/Dialect/TowerRuntime.h"
 
-using namespace mlir::python;
-using namespace mlir::python::adaptors;
+#include <nanobind/nanobind.h>
 
-PYBIND11_MODULE(_towerRuntimeDialect, m) {
+using namespace mlir::python;
+
+namespace nb = nanobind;
+
+NB_MODULE(_towerRuntimeDialect, m) {
   //===--------------------------------------------------------------------===//
   // TowerRuntime dialect
   //===--------------------------------------------------------------------===//
@@ -21,23 +24,23 @@ PYBIND11_MODULE(_towerRuntimeDialect, m) {
           mlirDialectHandleLoadDialect(handle, context);
         }
       },
-      py::arg("context") = py::none(), py::arg("load") = true);
+      nb::arg("context") = nb::none(), nb::arg("load") = true);
 
   //===--------------------------------------------------------------------===//
   // ContextType
   //===--------------------------------------------------------------------===//
 
-  mlir_type_subclass(towerRuntimeM, "ContextType",
-                     mlirTypeIsATowerRuntimeContextType)
+  nanobind_adaptors::mlir_type_subclass(towerRuntimeM, "ContextType",
+                                        mlirTypeIsATowerRuntimeContextType)
       .def_classmethod(
           "get",
-          [](py::object cls, MlirContext context) {
+          [](nb::object cls, MlirContext context) {
             CollectDiagnosticsToStringScope scope(context);
             MlirType type = mlirTowerRuntimeContextTypeGet(context);
             if (mlirTypeIsNull(type)) {
-              throw py::value_error(scope.takeMessage());
+              throw nb::value_error(scope.takeMessage().c_str());
             }
             return cls(type);
           },
-          "cls"_a, py::kw_only(), "context"_a = py::none());
+          nb::arg("cls"), nb::kw_only(), nb::arg("context") = nb::none());
 }

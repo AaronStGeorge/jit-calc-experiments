@@ -1,9 +1,13 @@
 #include "jit-calc-mlir-c/Dialect/Wasm.h"
-#include "mlir/Bindings/Python/PybindAdaptors.h"
+#include "mlir/Bindings/Python/NanobindAdaptors.h"
 
-using namespace mlir::python::adaptors;
+#include <nanobind/nanobind.h>
 
-PYBIND11_MODULE(_wasmDialect, m) {
+using namespace mlir::python;
+
+namespace nb = nanobind;
+
+NB_MODULE(_wasmDialect, m) {
   //===--------------------------------------------------------------------===//
   // Wasm dialect
   //===--------------------------------------------------------------------===//
@@ -18,5 +22,5 @@ PYBIND11_MODULE(_wasmDialect, m) {
           mlirDialectHandleLoadDialect(handle, context);
         }
       },
-      py::arg("context") = py::none(), py::arg("load") = true);
+      nb::arg("context") = nb::none(), nb::arg("load") = true);
 }
