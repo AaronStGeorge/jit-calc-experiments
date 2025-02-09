@@ -50,8 +50,8 @@ See MLIR python bindings virtual environment setup [docs](https://mlir.llvm.org/
 
 #### LLVM Source build
 
-Though `jit-calc-experiments` doesn't care _where_ LLVM is built, it requires a few LLVM utilities and projects that aren't part of some build you would just download from brew.
-We have to set a whole bunch of CMake flags to build LLVM with the right stuff.
+`jit-calc-experiments` doesn't care _where_ LLVM is built, but it requires a few LLVM utilities and projects that won't part of a "regular" build that one might download from brew.
+The command below set's CMake flags for the LLVM build so that it builds everything we need.
 ```sh
 (mlirdev) $ mkdir llvm-project/build && cd llvm-project/build
 
@@ -99,13 +99,14 @@ For more info, the `LLVM` docs have great [instructions on how to build LLVM](ht
 
 ## Building `jit-calc-experiments`
 
-The `jit-calc-experiments` CMake build needs some flags to tell it where LLVM is.
-It also needs to find `raylib`, but if you installed that with homebrew it should "just work."
+The `jit-calc-experiments` CMake build needs some flags telling it where LLVM is.
+The `jit-calc-experiments` build also needs to find `raylib`, but if you installed `raylib` with homebrew it should be able to find it automagically.
+The build command below should set everything correctly.
 
-The build command uses `$LLVM_BUILD_DIR` environment variable to holds the path of your LLVM build; something like: `/Users/ralph5/Dev/c++/llvm-project/build`.
+The command below uses `$LLVM_BUILD_DIR` environment variable to hold the path of your LLVM build; something like: `/Users/ralph5/Dev/c++/llvm-project/build`.
 Running the subshell with `set -u` first ensures that the command fails if `$LLVM_BUILD_DIR` isn't bound.
 If `$LLVM_BUILD_DIR` isn't set, or set to something wrong, the build won't necessarily fail right then and there. 
-Instead, CMake will pick up find your homebrew LLVM install instead and fail later some incredibly confusing way.
+Instead CMake will pick up your homebrew LLVM, then fail later in some incredibly confusing way.
 ```sh
 (mlirdev) $ mkdir build && cd build
 # generate build script, the CMake options are pretty much the same as the LLVM
@@ -145,7 +146,7 @@ If you want run `wasm_to_mlir.py`, maybe to run the `slow-roll-fibonacci-2` expe
 	| srf2-driver
 ```
 you'll need to have the virtual environment active, and you'll need to set the `$PYTHONPATH` environment variable to pick up the MLIR python bindings.
-The above command also assumes that `jit-calc-opt` (one of the programs `jit-calc-experiments` builds) is on your `$PATH`.
+The `slow-roll-fibonacci-2` experiment above also assumes that `jit-calc-opt` (one of the programs `jit-calc-experiments` builds) is on your `$PATH`.
 [`source_me_for_python_bindings.sh`](https://github.com/AaronStGeorge/jit-calc-experiments/blob/main/source_me_for_python_bindings.sh) sets your `$PATH` and `$PYTHONPATH`.
 ```sh
 (mlirdev) $ source source_me_for_python_bindings.sh
