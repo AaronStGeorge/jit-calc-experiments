@@ -11,7 +11,7 @@ Look, "experiments" is in the name, there's going to be some weird shit.
 
 #### An Apple silicon mac
 
-A ARM based linux machine would probably work as well, but an x86 machine definitely won't. Some functions are written in [AArch64 assembly](https://github.com/AaronStGeorge/jit-calc-experiments/blob/main/lib/HomeRolledCoroutines/home_rolled_coroutines.s).
+An ARM64 linux machine would probably work as well, but an x86 machine definitely won't. Some functions are written in [ARM64 assembly](https://github.com/AaronStGeorge/jit-calc-experiments/blob/main/lib/HomeRolledCoroutines/home_rolled_coroutines.s).
 
 #### A `clang` that can compile WebAssembly, some other C++ build tools, and raylib
 
@@ -102,8 +102,7 @@ For more info, the `LLVM` docs have great [instructions on how to build LLVM](ht
 The `jit-calc-experiments` CMake build needs some flags to tell it where LLVM is.
 It also needs to find `raylib`, but if you installed that with homebrew it should "just work."
 
-The following build command uses `$LLVM_BUILD_DIR` environment variable to holds the path of your LLVM build.
-Something like: `/Users/ralph5/Dev/c++/llvm-project/build`.
+The build command uses `$LLVM_BUILD_DIR` environment variable to holds the path of your LLVM build; something like: `/Users/ralph5/Dev/c++/llvm-project/build`.
 Running the subshell with `set -u` first ensures that the command fails if `$LLVM_BUILD_DIR` isn't bound.
 If `$LLVM_BUILD_DIR` isn't set, or set to something wrong, the build won't necessarily fail right then and there. 
 Instead, CMake will pick up find your homebrew LLVM install instead and fail later some incredibly confusing way.
