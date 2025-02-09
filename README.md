@@ -50,7 +50,7 @@ See MLIR python bindings virtual environment setup [docs](https://mlir.llvm.org/
 
 #### LLVM Source build
 
-Though `jit-calc-experiments` doesn't care _where_ LLVM is built, it requires a few `LLVM` utilities and projects that aren't part of some build you would just download from brew (I think).
+Though `jit-calc-experiments` doesn't care _where_ LLVM is built, it requires a few `LLVM` utilities and projects that aren't part of some build you would just download from brew.
 We have to set a whole bunch of CMake flags to build LLVM with the right stuff.
 ```sh
 (mlirdev) $ mkdir llvm-project/build && cd llvm-project/build
@@ -102,7 +102,11 @@ For more info, the `LLVM` docs have great [instructions on how to build LLVM](ht
 The `jit-calc-experiments` CMake build needs some flags to tell it where LLVM is.
 It also needs to find `raylib`, but if you installed that with homebrew it should "just work."
 
-The following command assumes `$LLVM_BUILD_DIR` environment variable holds the path of your LLVM build.
+The following build command uses `$LLVM_BUILD_DIR` environment variable to holds the path of your LLVM build.
+Something like: `/Users/ralph5/Dev/c++/llvm-project/build`.
+Running the subshell with `set -u` first ensures that the command fails if `$LLVM_BUILD_DIR` isn't bound.
+If `$LLVM_BUILD_DIR` isn't set, or set to something wrong, the build won't necessarily fail right then and there. 
+Instead, CMake will pick up find your homebrew LLVM install instead and fail later some incredibly confusing way.
 ```sh
 (mlirdev) $ mkdir build && cd build
 # generate build script, the CMake options are pretty much the same as the LLVM
@@ -113,9 +117,9 @@ The following command assumes `$LLVM_BUILD_DIR` environment variable holds the p
 #   DLLVM_EXTERNAL_LIT=$LLVM_BUILD_DIR/bin/llvm-lit   - The `lit` tool (built during `LLVM` build) is needed for
 #                                                       testing. Not sure why this needs its own flag rather than
 #                                                       being inferred from DMLIR_DIR.
-(mlirdev) $ cmake -G Ninja .. \
-    -DMLIR_DIR=$LLVM_BUILD_DIR/lib/cmake/mlir \
-    -DLLVM_EXTERNAL_LIT=$LLVM_BUILD_DIR/bin/llvm-lit
+(mlirdev) $ (set -u; echo ${LLVM_BUILD_DIR} > /dev/null) && cmake -G Ninja .. \
+    -DMLIR_DIR=${LLVM_BUILD_DIR}/lib/cmake/mlir \
+    -DLLVM_EXTERNAL_LIT=${LLVM_BUILD_DIR}/bin/llvm-lit \
     -DCMAKE_BUILD_TYPE=Debug \
     -DLLVM_PARALLEL_LINK_JOBS=1 \
     -DCMAKE_C_COMPILER=$(which clang) \
