@@ -100,7 +100,7 @@ For more info, the `LLVM` docs have great [instructions on how to build LLVM](ht
 
 ## Building `jit-calc-experiments`
 
-The `jit-calc-experiments` needs to find `raylib`. If you're using homebrew `raylib` it should be able to find it automagically, if not you'll need to do some _stuff_, you get to figure that shit out yourself 😊.
+The `jit-calc-experiments` needs to find `raylib`. If you're using homebrew `raylib` it should be able to find it automagically, if not you'll need to do some _stuff_ and you get to figure that shit out yourself 😊.
 
 The command below uses `$LLVM_BUILD_DIR` environment variable to hold the path of your LLVM build; something like: `/Users/ralph5/Dev/c++/llvm-project/build`.
 Running the subshell with `set -u` first ensures that the command fails if `$LLVM_BUILD_DIR` isn't bound.
