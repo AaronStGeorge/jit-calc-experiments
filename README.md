@@ -21,13 +21,13 @@ Brew has the other stuff we need as well.
 ```sh
 $ brew install llvm cmake ninja pkg-config raylib
 ```
-Homebrew doesn't put `clang` on the regular homebrew path (IDK why).
+Homebrew doesn’t add `clang` to its standard path (IDK why).
 So, outside of regular homebrew setup, you'll want to add this to your `.bashrc` or `.zshrc`.
 ```sh
 export PATH="/opt/homebrew/opt/llvm/bin:$PATH"
 ```
 
-#### A Python virtual environment with the MLIRy stuff installed
+#### A python virtual environment with the MLIRy stuff installed
 
 You'll need to have [LLVM](https://github.com/llvm/llvm-project) pulled down for this.
 ```sh
@@ -50,8 +50,8 @@ See MLIR python bindings virtual environment setup [docs](https://mlir.llvm.org/
 
 #### LLVM Source build
 
-`jit-calc-experiments` doesn't care _where_ LLVM is built, but it requires a few LLVM utilities and projects that won't part of a "regular" build that one might download from brew.
-The command below set's CMake flags for the LLVM build so that it builds everything we need.
+`jit-calc-experiments` doesn't care _where_ LLVM is built, but it requires a few LLVM utilities and projects that isn't part of a "regular" build that one might download from brew.
+The command below sets CMake flags for the LLVM build so that it builds everything we need.
 ```sh
 (mlirdev) $ mkdir llvm-project/build && cd llvm-project/build
 
@@ -62,19 +62,19 @@ The command below set's CMake flags for the LLVM build so that it builds everyth
 #   LLVM_INSTALL_UTILS=ON              - Install utilities, like lit, needed for
 #                                        testing jit-calc.
 #   LLVM_TARGETS_TO_BUILD="AArch64"    - Target architectures.
-#   DCMAKE_BUILD_TYPE=Debug            - The options are Release, Debug, or RelWithDebInfo.
+#   CMAKE_BUILD_TYPE=Debug             - The options are Release, Debug, or RelWithDebInfo.
 #                                        You'll probably want to step through stuff
 #                                        in a debugger, hence Debug.
-#   DLLVM_ENABLE_LLD=ON                - Link with LLD rather than system linker. Seconds
+#   LLVM_ENABLE_LLD=ON                 - Link with LLD rather than system linker. Seconds
 #                                        instead of minutes, well worth it.
 #   LLVM_PARALLEL_LINK_JOBS=1          - To prevent swapping do one link job per 16 GB of
 #                                        RAM available. Linking will take FOREVER without
 #                                        this.
-#   DMLIR_ENABLE_BINDINGS_PYTHON=ON    - We use the python bindings in jit-calc-experiments.
+#   MLIR_ENABLE_BINDINGS_PYTHON=ON     - We use the python bindings in jit-calc-experiments.
 #   LLVM_INSTALL_GTEST=ON              - LLVM has a vendored version of gtest, we want to
 #                                        use that version for writing our tests in
 #                                        jit-calc-experiments.
-#   DCMAKE_EXPORT_COMPILE_COMMANDS=1   - This creates whatever clangd needs to do it's jump
+#   CMAKE_EXPORT_COMPILE_COMMANDS=1    - This creates whatever clangd needs to do it's jump
 #                                        to definition magic. If you're not using clnagd you
 #                                        don't need this.
 (mlirdev) $ cmake -G Ninja ../llvm \
@@ -112,9 +112,9 @@ Instead CMake will pick up your homebrew LLVM, then fail later in some incredibl
 # generate build script, the CMake options are pretty much the same as the LLVM
 # with the following exceptions:
 #
-#   DMLIR_DIR=$LLVM_BUILD_DIR/lib/cmake/mlir          - The `jit-calc-experiments` build needs to know where the
+#   MLIR_DIR=$LLVM_BUILD_DIR/lib/cmake/mlir           - The `jit-calc-experiments` build needs to know where the
 #                                                       LLVM build is.
-#   DLLVM_EXTERNAL_LIT=$LLVM_BUILD_DIR/bin/llvm-lit   - The `lit` tool (built during `LLVM` build) is needed for
+#   LLVM_EXTERNAL_LIT=$LLVM_BUILD_DIR/bin/llvm-lit    - The `lit` tool (built during `LLVM` build) is needed for
 #                                                       testing. Not sure why this needs its own flag rather than
 #                                                       being inferred from DMLIR_DIR.
 (mlirdev) $ (set -u; echo ${LLVM_BUILD_DIR} > /dev/null) && cmake -G Ninja .. \
@@ -139,15 +139,13 @@ At this point you should be able to run the tests
 
 ## Running `wasm_to_mlir.py`
 
-If you want run `wasm_to_mlir.py`, maybe to run the `slow-roll-fibonacci-2` experiment,
+To run `wasm_to_mlir.py`—for example, to execute the `slow-roll-fibonacci-2` experiment—make sure your virtual environment (the one we set up earlier) is active and your $PYTHONPATH is set to include the MLIR python bindings. You can source the [`source_me_for_python_bindings.sh`](https://github.com/AaronStGeorge/jit-calc-experiments/blob/main/source_me_for_python_bindings.sh) to set everything up:
+```sh
+(mlirdev) $ source source_me_for_python_bindings.sh
+```
+This script modifies your `$PATH` to include `jit-calc-experiements` build directory and sets `$PYTHONPATH` for the MLIR python bindings. Then you can run:
 ```sh
 (mlirdev) $ python python/wasm_to_mlir.py experiments/slow-roll-fibonacci-2/fixtures/fib.wasm \
 	| jit-calc-opt --shim-function='function-to-shim=fib' --convert-tower-runtime-to-llvm \
 	| srf2-driver
-```
-you'll need to have the virtual environment active, and you'll need to set the `$PYTHONPATH` environment variable to pick up the MLIR python bindings.
-The `slow-roll-fibonacci-2` experiment above also assumes that `jit-calc-opt` (one of the programs `jit-calc-experiments` builds) is on your `$PATH`.
-[`source_me_for_python_bindings.sh`](https://github.com/AaronStGeorge/jit-calc-experiments/blob/main/source_me_for_python_bindings.sh) sets your `$PATH` and `$PYTHONPATH`.
-```sh
-(mlirdev) $ source source_me_for_python_bindings.sh
 ```
