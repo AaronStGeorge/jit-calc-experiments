@@ -153,9 +153,9 @@ This script modifies your `$PATH` to include `jit-calc-experiements` build direc
 Then you can run `slow-roll-fibonacci-2`.
 ```sh
 (mlirdev) $ python python/wasm_to_mlir.py \
-          experiments/slow-roll-fibonacci-2/fixtures/fib.wasm \
-	| jit-calc-opt \
-          --shim-function='function-to-shim=fib' \
-          --convert-tower-runtime-to-llvm \
-	| srf2-driver
+              experiments/slow-roll-fibonacci-2/fixtures/fib.wasm \
+	    | jit-calc-opt \
+              --shim-function='function-to-shim=fib' \
+              --convert-tower-runtime-to-llvm \
+	    | srf2-driver
 ```
