@@ -151,7 +151,10 @@ You can source [`source_me_for_python_bindings.sh`](https://github.com/AaronStGe
 This script modifies your `$PATH` to include `jit-calc-experiements` build directory and sets `$PYTHONPATH` for the MLIR python bindings.
 Then you can run `slow-roll-fibonacci-2`.
 ```sh
-(mlirdev) $ python python/wasm_to_mlir.py experiments/slow-roll-fibonacci-2/fixtures/fib.wasm \
-	| jit-calc-opt --shim-function='function-to-shim=fib' --convert-tower-runtime-to-llvm \
+(mlirdev) $ python python/wasm_to_mlir.py \
+          experiments/slow-roll-fibonacci-2/fixtures/fib.wasm \
+	| jit-calc-opt \
+          --shim-function='function-to-shim=fib' \
+          --convert-tower-runtime-to-llvm \
 	| srf2-driver
 ```
