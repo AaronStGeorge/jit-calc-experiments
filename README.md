@@ -100,7 +100,7 @@ For more info, the `LLVM` docs have great [instructions on how to build LLVM](ht
 
 ## Building `jit-calc-experiments`
 
-The `jit-calc-experiments` needs to find `raylib`. 
+The `jit-calc-experiments` needs to find `raylib`.
 If you're using homebrew `raylib` it should be able to find it automagically; if not you'll need to do some _stuff_, and you get to figure that shit out yourself 😊.
 
 The command below uses `$LLVM_BUILD_DIR` environment variable to hold the path of your LLVM build; something like: `/Users/ralph5/Dev/c++/llvm-project/build`.
@@ -154,8 +154,8 @@ Then you can run `slow-roll-fibonacci-2`.
 ```sh
 (mlirdev) $ python python/wasm_to_mlir.py \
               experiments/slow-roll-fibonacci-2/fixtures/fib.wasm \
-	    | jit-calc-opt \
+            | jit-calc-opt \
               --shim-function='function-to-shim=fib' \
               --convert-tower-runtime-to-llvm \
-	    | srf2-driver
+            | srf2-driver
 ```
