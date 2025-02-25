@@ -54,9 +54,9 @@ See MLIR python bindings virtual environment setup [docs](https://mlir.llvm.org/
 (mlirdev) $ mkdir llvm-project/build
 (mlirdev) $ cd llvm-project/build
 
-# To compile LLVM, we first need to generate the build system with CMake. We’ll use CMake variables
-# (spelled -DVARIABLE=VALUE in CMake) to turn on some non-standard build features. Here’s an overview
-# of the variables we’re setting:
+# To compile LLVM, we first need to generate the build system with CMake. We’ll use CMake
+# variables (spelled -DVARIABLE=VALUE in CMake) to turn on some non-standard build
+# features. Here’s an overview of the variables we’re setting:
 #
 #   LLVM_ENABLE_PROJECTS="mlir"        - MLIR project must be enabled.
 #   LLVM_INSTALL_UTILS=ON              - Install utilities, like lit, needed for
@@ -110,14 +110,17 @@ If `$LLVM_BUILD_DIR` isn't set or is set incorrectly, the build won't fail immed
 (mlirdev) $ mkdir jit-calc-experiments/build
 (mlirdev) $ cd jit-calc-experiments/build
 
-# The jit-calc-experiments CMake build piggybacks on LLVM’s, so the build system generation process is similar, but
-# there are a few extra variables you need to define:
+# The jit-calc-experiments CMake build piggybacks on LLVM’s, so the build system generation
+# process is similar, but there are a few extra variables you need to define:
 #
-#   MLIR_DIR=$LLVM_BUILD_DIR/lib/cmake/mlir           - The `jit-calc-experiments` build needs to know where the
-#                                                       LLVM build is.
-#   LLVM_EXTERNAL_LIT=$LLVM_BUILD_DIR/bin/llvm-lit    - The `lit` tool (built during `LLVM` build) is needed for
-#                                                       testing. Not sure why this needs its own flag rather than
-#                                                       being inferred from DMLIR_DIR.
+#   MLIR_DIR=$LLVM_BUILD_DIR/lib/cmake/mlir           - The `jit-calc-experiments` build
+#                                                       needs to know where the LLVM build
+#                                                       is.
+#   LLVM_EXTERNAL_LIT=$LLVM_BUILD_DIR/bin/llvm-lit    - The `lit` tool (built during `LLVM`
+#                                                       build) is needed for testing. Not
+#                                                       sure why this needs its own flag
+#                                                       rather than being inferred from
+#                                                       DMLIR_DIR.
 (mlirdev) $ (set -u; echo ${LLVM_BUILD_DIR} > /dev/null) && cmake -G Ninja .. \
     -DMLIR_DIR=${LLVM_BUILD_DIR}/lib/cmake/mlir \
     -DLLVM_EXTERNAL_LIT=${LLVM_BUILD_DIR}/bin/llvm-lit \
@@ -141,7 +144,7 @@ At this point you should be able to run the tests
 ## Running `wasm_to_mlir.py`
 
 To run `wasm_to_mlir.py`—for example, to execute the `slow-roll-fibonacci-2` experiment—make sure the python virtual environment we set up earlier is active (`source ~/.venv/mlirdev/bin/activate`) and your `$PYTHONPATH` is set to include the MLIR python bindings.
-You can source the [`source_me_for_python_bindings.sh`](https://github.com/AaronStGeorge/jit-calc-experiments/blob/main/source_me_for_python_bindings.sh) to set everything up.
+You can source [`source_me_for_python_bindings.sh`](https://github.com/AaronStGeorge/jit-calc-experiments/blob/main/source_me_for_python_bindings.sh) to set everything up.
 ```sh
 (mlirdev) $ source source_me_for_python_bindings.sh
 ```
