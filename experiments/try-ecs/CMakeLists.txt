@@ -1,0 +1,1 @@
+add_llvm_executable(try-ecs try-ecs.cpp)
