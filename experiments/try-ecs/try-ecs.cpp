@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <bitset>
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
@@ -9,8 +10,68 @@
 #include <unordered_map>
 #include <vector>
 
+static constexpr size_t MAX_COMPONENTS = 128;
+
 using Entity = uint32_t;
 using ComponentTypeID = uint32_t;
+
+template <size_t Size> class Signature : public std::bitset<Size> {
+public:
+  class iterator {
+  public:
+    // Standard iterator typedefs
+    using iterator_category = std::input_iterator_tag;
+    using value_type = ComponentTypeID;
+    using difference_type = std::ptrdiff_t;
+    using pointer = const ComponentTypeID *;
+    using reference = const ComponentTypeID &;
+
+    iterator(const Signature &signature, size_t idx)
+        : signature(signature), idx(idx) {
+      skipCleared();
+    }
+
+    // Pre-increment
+    iterator &operator++() {
+      ++idx;
+      skipCleared();
+      return *this;
+    }
+
+    // Post-increment
+    iterator operator++(int) {
+      iterator temp = *this;
+      ++(*this);
+      return temp;
+    }
+
+    // Equality / inequality
+    bool operator==(const iterator &other) const {
+      return (signature == other.signature) && (idx == other.idx);
+    }
+    bool operator!=(const iterator &other) const { return !(*this == other); }
+
+    // Dereference: returns the index of the set bit
+    std::size_t operator*() const { return idx; }
+
+  private:
+    // Skip any cleared bits until we find a set bit or reach end
+    void skipCleared() {
+      while (idx < Size && !signature.test(idx)) {
+        ++idx;
+      }
+    }
+
+    const Signature &signature; // pointer to the signature (bitset)
+    ComponentTypeID idx;        // current bit position
+  };
+
+  iterator begin() const { return iterator(*this, 0); }
+
+  iterator end() const { return iterator(*this, Size); }
+};
+
+using ComponentSignature = Signature<MAX_COMPONENTS>;
 
 // Utility to generate unique component type IDs at runtime (one per component
 // type)
@@ -25,35 +86,39 @@ template <typename Component> ComponentTypeID componentTypeID() {
 }
 
 struct Archetype {
-  std::vector<ComponentTypeID>
-      signature;                // Sorted component types in this archetype
+  ComponentSignature signature;
   std::vector<Entity> entities; // Entities in this archetype
   std::unordered_map<ComponentTypeID, std::vector<uint8_t>>
       data; // Raw data arrays
 
   // Constructor initializes the component arrays for given types
-  Archetype(const std::vector<ComponentTypeID> &types) : signature(types) {
-    for (ComponentTypeID type : types) {
-      data[type] = std::vector<uint8_t>(); // empty array, will reserve on use
+  Archetype(ComponentSignature signature) : signature(signature) {
+    for (ComponentTypeID type : signature) {
+      data[type] = std::vector<uint8_t>();
     }
   }
 };
+
+template <typename... Components> ComponentSignature buildSignature() {
+  ComponentSignature signature;
+  // For each component type in the parameter pack, set the corresponding bit
+  (signature.set(componentTypeID<Components>()), ...);
+  return signature;
+}
 
 struct EntityRecord {
   Archetype *archetype;
   size_t index; // index of the entity within the archetype's arrays
 };
 
+// Forward declaration
 template <typename... Components> class Query;
 
 class ECS {
 public:
   // Create a new entity with a given set of components
   template <typename... Components> Entity createEntity(Components &&...comps) {
-    // Build and sort the signature (component type IDs) for this set of
-    // components
-    std::vector<ComponentTypeID> signature = {componentTypeID<Components>()...};
-    std::sort(signature.begin(), signature.end());
+    ComponentSignature signature = buildSignature<Components...>();
 
     // Find or create an archetype for this signature
     Archetype *arch = findOrCreateArchetype(signature);
@@ -82,30 +147,31 @@ public:
     EntityRecord rec = entityLocations[entity];
     Archetype *oldArch = rec.archetype;
     size_t oldIndex = rec.index;
+
     // Build new signature = old signature + new component type
-    std::vector<ComponentTypeID> newSig = oldArch->signature;
+    ComponentSignature newSig = oldArch->signature;
     ComponentTypeID newType = componentTypeID<Component>();
     // If component already exists, do nothing
-    if (std::find(newSig.begin(), newSig.end(), newType) != newSig.end()) {
+    if (newSig.test(newType)) {
       return;
     }
-    newSig.push_back(newType);
-    std::sort(newSig.begin(), newSig.end());
+    newSig.set(newType);
 
     // Find/create the new archetype
     Archetype *newArch = findOrCreateArchetype(newSig);
     // Append entity to new archetype
     size_t newIndex = newArch->entities.size();
     newArch->entities.push_back(entity);
-    // Copy over this entity's components from oldArch to newArch
+    // Copy component data from old archetype
     for (ComponentTypeID type : oldArch->signature) {
-      // Copy component data from old archetype
       copyComponentData(oldArch, newArch, type, oldIndex);
     }
     // Add the new component's data
     storeComponentData(newArch, newType, &comp, sizeof(Component));
+
     // Update entity location to new archetype
     entityLocations[entity] = {newArch, newIndex};
+
     // Remove entity from old archetype (swap-remove to keep array dense)
     removeEntityFromArchetype(oldArch, oldIndex, entity);
   }
@@ -119,8 +185,7 @@ private:
   std::vector<Archetype> archetypes;
   std::unordered_map<Entity, EntityRecord> entityLocations;
 
-  Archetype *
-  findOrCreateArchetype(const std::vector<ComponentTypeID> &signature) {
+  Archetype *findOrCreateArchetype(ComponentSignature &signature) {
     // Check if an archetype with this signature already exists
     for (Archetype &arch : archetypes) {
       if (arch.signature == signature) {
@@ -148,9 +213,11 @@ private:
     std::vector<uint8_t> &srcBuffer = srcArch->data[type];
     std::vector<uint8_t> &dstBuffer = dstArch->data[type];
     size_t compSize = srcBuffer.size() / srcArch->entities.size();
+
     // Ensure destination has space for the new component
     size_t dstOffset = dstBuffer.size();
     dstBuffer.resize(dstOffset + compSize);
+
     // Copy the component bytes from source index to end of destination buffer
     const uint8_t *srcPtr = srcBuffer.data() + srcIndex * compSize;
     std::memcpy(dstBuffer.data() + dstOffset, srcPtr, compSize);
@@ -162,6 +229,7 @@ private:
     Entity lastEntity = arch->entities[lastIndex];
     // Swap the last entity into the removed spot
     arch->entities[index] = lastEntity;
+
     // Update each component array: move last element's bytes into removed
     // element's slot
     for (ComponentTypeID type : arch->signature) {
@@ -175,6 +243,7 @@ private:
       buffer.resize(buffer.size() - componentSize);
     }
     arch->entities.pop_back();
+
     // Update the moved entity's record to new index in this archetype
     entityLocations[lastEntity] = {arch, index};
   }
@@ -198,7 +267,7 @@ template <typename... Components> class Query {
   size_t entityIdx = 0;
 
   // Components an archetype is required to provide to satisfy query.
-  std::vector<ComponentTypeID> required;
+  ComponentSignature required;
 
   // Current packet of valid data
   std::optional<Packet> current;
@@ -210,13 +279,8 @@ template <typename... Components> class Query {
     for (/* this->archIt */; archIt < archEnd; archIt++) {
       Archetype &arch = *archIt;
 
-      // Skip archetype If arch doesn't have all required components
-      // TODO: this should probably be done with bitsets
-      if (!std::all_of(required.begin(), required.end(),
-                       [&arch](ComponentTypeID type) {
-                         return std::binary_search(arch.signature.begin(),
-                                                   arch.signature.end(), type);
-                       })) {
+      // Check if archetype has all required components
+      if ((arch.signature & required) != required) {
         continue;
       }
 
@@ -227,7 +291,7 @@ template <typename... Components> class Query {
         return {buildPacket(arch)};
       }
 
-			// Moving to next archetype, reset entity index;
+      // Moving to next archetype, reset entity index;
       entityIdx = 0;
     }
 
@@ -256,8 +320,8 @@ template <typename... Components> class Query {
 
 public:
   explicit Query(ECS &ecs)
-      : archIt(ecs.archetypes.begin()), archEnd(ecs.archetypes.end()) {
-    required = {componentTypeID<Components>()...};
+      : archIt(ecs.archetypes.begin()), archEnd(ecs.archetypes.end()),
+        required(buildSignature<Components...>()) {
     current = fetchNext();
   }
 
