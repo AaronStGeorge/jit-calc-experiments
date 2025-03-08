@@ -97,7 +97,6 @@ See MLIR python bindings virtual environment setup [docs](https://mlir.llvm.org/
     -DMLIR_ENABLE_BINDINGS_PYTHON=ON \
     -DLLVM_INSTALL_GTEST=ON \
     -DLLVM_USE_SPLIT_DWARF=ON \
-    -DLLVM_USE_SPLIT_DWARF=ON \
     -DCMAKE_EXPORT_COMPILE_COMMANDS=1
 
 # From the llvm-project/build directory run `ninja` to build all targets. Go grab some
