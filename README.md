@@ -74,9 +74,6 @@ See MLIR python bindings virtual environment setup [docs](https://mlir.llvm.org/
 #   LLVM_INSTALL_GTEST=ON              - LLVM has a vendored version of gtest, we want to
 #                                        use that version for writing our tests in
 #                                        jit-calc-experiments.
-#   CMAKE_EXPORT_COMPILE_COMMANDS=1    - This creates whatever clangd needs to do it's jump
-#                                        to definition magic. If you're not using clnagd you
-#                                        don't need this.
 #   LLVM_USE_SPLIT_DWARF=ON            - This option stores debug information in a separate
 #                                        file rather than embedding it directly in the
 #                                        binary. Normally, a debugger reads debug data from
@@ -85,6 +82,9 @@ See MLIR python bindings virtual environment setup [docs](https://mlir.llvm.org/
 #                                        information is often large, keeping it out of the
 #                                        main binary reduces the amount of data the linker
 #                                        must handle, significantly shortening link times.
+#   CMAKE_EXPORT_COMPILE_COMMANDS=1    - This creates whatever clangd needs to do it's jump
+#                                        to definition magic. If you're not using clnagd you
+#                                        don't need this.
 (mlirdev) $ cmake -G Ninja ../llvm \
     -DCMAKE_C_COMPILER=$(which clang) \
     -DCMAKE_CXX_COMPILER=$(which clang++) \
