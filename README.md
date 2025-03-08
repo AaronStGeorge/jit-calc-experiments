@@ -78,13 +78,12 @@ See MLIR python bindings virtual environment setup [docs](https://mlir.llvm.org/
 #                                        to definition magic. If you're not using clnagd you
 #                                        don't need this.
 #   LLVM_USE_SPLIT_DWARF=ON            - Use split dwarf. This option ensures that debug
-#                                        information is stored outside  the binary in a
-#                                        separate. Normally a debugger would read debug
+#                                        information is stored outside the binary in a
+#                                        separate file. Normally a debugger would read debug
 #                                        information from the binary, but it can instead
-#                                        loadit from this external file. As debug
+#                                        load the DWARF from this external file. As debug
 #                                        information is often very large, avoiding moving
-#                                        the debug information around can save significant
-#                                        linking time.
+#                                        it around can save significant linking time.
 (mlirdev) $ cmake -G Ninja ../llvm \
     -DCMAKE_C_COMPILER=$(which clang) \
     -DCMAKE_CXX_COMPILER=$(which clang++) \
