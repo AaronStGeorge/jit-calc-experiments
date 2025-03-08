@@ -77,6 +77,13 @@ See MLIR python bindings virtual environment setup [docs](https://mlir.llvm.org/
 #   CMAKE_EXPORT_COMPILE_COMMANDS=1    - This creates whatever clangd needs to do it's jump
 #                                        to definition magic. If you're not using clnagd you
 #                                        don't need this.
+#   LLVM_USE_SPLIT_DWARF=ON            - Use split dwarf. This option ensures that debug
+#                                        information is stored outside  the binary in a separate.
+#                                        Normally a debugger would read debug information from 
+#                                        the binary, but it can instead load it from this external
+#                                        file. As debug information is often very large, avoiding
+#                                        moving the debug information around can save significant
+#                                        linking time.
 (mlirdev) $ cmake -G Ninja ../llvm \
     -DCMAKE_C_COMPILER=$(which clang) \
     -DCMAKE_CXX_COMPILER=$(which clang++) \
@@ -89,6 +96,8 @@ See MLIR python bindings virtual environment setup [docs](https://mlir.llvm.org/
     -DLLVM_PARALLEL_LINK_JOBS=1 \
     -DMLIR_ENABLE_BINDINGS_PYTHON=ON \
     -DLLVM_INSTALL_GTEST=ON \
+    -DLLVM_USE_SPLIT_DWARF=ON \
+    -DLLVM_USE_SPLIT_DWARF=ON \
     -DCMAKE_EXPORT_COMPILE_COMMANDS=1
 
 # From the llvm-project/build directory run `ninja` to build all targets. Go grab some
@@ -132,6 +141,7 @@ If `$LLVM_BUILD_DIR` isn't set or is set incorrectly, the build won't fail immed
     -DPython3_EXECUTABLE=$(which python) \
     -DLLVM_USE_LINKER=lld \
     -DMLIR_ENABLE_BINDINGS_PYTHON=ON \
+    -DLLVM_USE_SPLIT_DWARF=ON \
     -DCMAKE_EXPORT_COMPILE_COMMANDS=1
 
 # build all targets
