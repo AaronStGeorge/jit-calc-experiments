@@ -49,7 +49,7 @@ llvm::orc::ThreadSafeModule getLLVMIRFromStdin() {
   mlir::PassManager pm(&mlirContext);
   pm.addPass(mlir::wasm::createLowerWasm());
   pm.addPass(mlir::createConvertVectorToSCFPass());
-  pm.addPass(mlir::createConvertSCFToCFPass());
+  pm.addPass(mlir::createSCFToControlFlowPass());
   pm.addPass(mlir::createConvertControlFlowToLLVMPass());
   pm.addPass(mlir::createFinalizeMemRefToLLVMConversionPass());
   pm.addNestedPass<mlir::func::FuncOp>(mlir::createArithToLLVMConversionPass());
