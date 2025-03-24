@@ -11,6 +11,8 @@
 #include <unordered_map>
 #include <vector>
 
+#include <llvm/ADT/SmallVector.h>
+
 static constexpr std::size_t MAX_COMPONENTS = 128;
 
 using Entity = uint32_t;
@@ -225,105 +227,202 @@ private:
 // ----------------------------------------------------------------------
 
 template <typename... Components> class Query {
-  // Marker type for detecting the end of iteration.
-  struct sentinel {};
+  // Which archetypes match the query signature. Using small vector to avoid
+  // heap allocation for the common case.
+  llvm::SmallVector<Archetype *, 128> matching_archetypes_;
+  // Total number of entities in all matching archetypes
+  std::size_t total_entities_ = 0;
 
   // We're calling a std::tuple<Entity, Components*...> where each pointer is
   // the relevant component data for current entity a "packet".
   typedef std::tuple<Entity, Components *...> Packet;
 
-  // Archetype iterator
-  std::vector<Archetype>::iterator archIt;
-  std::vector<Archetype>::iterator archEnd;
+public:
+  class iterator {
+  public:
+    // Iterator traits
+    using iterator_category = std::random_access_iterator_tag;
+    using value_type = Packet;
+    using difference_type = std::ptrdiff_t;
+    using pointer = Packet *;
+    using reference = Packet &;
 
-  // The current entity in current archetype
-  size_t entityIdx = 0;
+    explicit iterator(const Query<Components...> *q, size_t globalIdx = 0)
+        : query(q), global_idx_(globalIdx) {
+      if (globalIdx < query->total_entities_) {
+        // Build the packet for the initial position
+        setIndexesAndBuildPacket(globalIdx);
+      }
+    }
 
-  // Components an archetype is required to provide to satisfy query.
-  ComponentSignature required;
+    // Dereference
+    Packet &operator*() { return packet_; }
+    const Packet &operator*() const { return packet_; }
+    Packet *operator->() { return &packet_; }
+    const Packet *operator->() const { return &packet_; }
 
-  // Current valid packet (or none)
-  std::optional<Packet> current;
+    // Pre-increment
+    iterator &operator++() {
+      global_idx_++;
+      if (global_idx_ >= query->total_entities_) {
+        // Out of bounds
+        return *this;
+      }
 
-  // Return the next valid entity packet or none
-  std::optional<Packet> fetchNext() {
+      if (++entity_idx_ < arch_->entities.size()) {
+        // Still within the current archetype
+        packet_ = buildPacket(arch_, entity_idx_);
+      } else {
+        // Move to the next archetype
+        setIndexesAndBuildPacket(global_idx_);
+      }
 
-    // Find next archetype with requested components
-    for (/* this->archIt */; archIt < archEnd; archIt++) {
-      Archetype &arch = *archIt;
+      return *this;
+    }
+    // Post-increment
+    iterator operator++(int) {
+      iterator temp = *this;
+      ++(*this);
+      return temp;
+    }
 
+    // Pre-decrement
+    iterator &operator--() {
+      setIndexesAndBuildPacket(global_idx_ - 1);
+      return *this;
+    }
+    // Post-decrement
+    iterator operator--(int) {
+      iterator temp = *this;
+      --(*this);
+      return temp;
+    }
+
+    // Random-access: +=
+    iterator &operator+=(difference_type n) {
+      setIndexesAndBuildPacket(global_idx_ + n);
+      return *this;
+    }
+    // Random-access: -=
+    iterator &operator-=(difference_type n) {
+      setIndexesAndBuildPacket(global_idx_ - n);
+      return *this;
+    }
+
+    // Random-access: it + n
+    friend iterator operator+(const iterator &it, difference_type n) {
+      return iterator(it.global_idx_ + n);
+    }
+    friend iterator operator+(difference_type n, const iterator &it) {
+      return iterator(it.global_idx_ + n);
+    }
+
+    // Random-access: it - n
+    friend iterator operator-(const iterator &it, difference_type n) {
+      return iterator(it.global_idx_ - n);
+    }
+
+    // Random-access: difference between two iterators
+    friend difference_type operator-(const iterator &lhs, const iterator &rhs) {
+      return (lhs.global_idx_ - rhs.global_idx_);
+    }
+
+    // Comparison operators
+    bool operator==(const iterator &other) const {
+      return global_idx_ == other.global_idx_;
+    }
+    bool operator!=(const iterator &other) const {
+      return global_idx_ != other.global_idx_;
+    }
+    bool operator<(const iterator &other) const {
+      return global_idx_ < other.global_idx_;
+    }
+    bool operator>(const iterator &other) const {
+      return global_idx_ > other.global_idx_;
+    }
+    bool operator<=(const iterator &other) const {
+      return global_idx_ <= other.global_idx_;
+    }
+    bool operator>=(const iterator &other) const {
+      return global_idx_ >= other.global_idx_;
+    }
+
+  private:
+    const Query<Components...> *query;
+    // Materialized packet.
+    Packet packet_;
+    // Global index into matching archetypes.
+    size_t global_idx_;
+    // Index into the current archetype.
+    size_t entity_idx_;
+    // Current archetype.
+    Archetype *arch_;
+
+    Packet buildPacket(Archetype *arch, size_t entityIdx) {
+      // The current entity ID in this archetype
+      Entity entityId = arch->entities[entityIdx];
+
+      // Helper lambda that returns a pointer to the component data.
+      auto getPtr = [arch, entityIdx](ComponentTypeID typeID) -> void * {
+        // The raw byte buffer for this component type
+        auto &buf = arch->data[typeID];
+        // Components should all be the same size, so
+        // component size = total bytes / entity count
+        size_t entityCount = arch->entities.size();
+        size_t compSize = buf.size() / entityCount;
+        return static_cast<void *>(buf.data() + entityIdx * compSize);
+      };
+
+      // Expand the parameter pack to build the pointer set
+      return {entityId, static_cast<Components *>(
+                            getPtr(componentTypeID<Components>()))...};
+    }
+
+    // Based on new global index reset indexes into local archetypes and build
+    // packet based on updated indexes.
+    void setIndexesAndBuildPacket(size_t globalIdx) {
+      if (globalIdx >= query->total_entities_) {
+        // Out of bounds
+        return;
+      }
+
+      this->global_idx_ = globalIdx;
+      size_t idx = globalIdx;
+      // Count entities in matching archetypes until we reach the global index.
+      for (Archetype *matching_archetype : query->matching_archetypes_) {
+        auto entityCount = matching_archetype->entities.size();
+        if (idx < entityCount) {
+          arch_ = matching_archetype;
+          entity_idx_ = idx;
+          packet_ = buildPacket(arch_, entity_idx_);
+          return;
+        }
+        idx -= entityCount;
+      }
+
+      assert(true && "unreachable");
+    }
+  };
+
+  explicit Query(ECS &ecs) {
+    ComponentSignature required(buildSignature<Components...>());
+    for (Archetype &arch : ecs.archetypes) {
       // Check if archetype has all required components
       if ((arch.signature & required) != required) {
         continue;
       }
 
-      // Iterate through all entities in this archetype
+      // We've found a matching archetype
       size_t entityCount = arch.entities.size();
-      if (entityIdx < entityCount) {
-        // We've found a valid entity in a matching archetype
-        return {buildPacket(arch)};
-      }
-
-      // Moving to next archetype, reset entity index;
-      entityIdx = 0;
+      total_entities_ += entityCount;
+      matching_archetypes_.push_back(&arch);
     }
-
-    return std::nullopt;
   }
 
-  Packet buildPacket(Archetype &arch) {
-    // The current entity ID in this archetype
-    Entity entityId = arch.entities[entityIdx];
+  iterator begin() const { return iterator(this, 0); }
+  iterator end() const { return iterator(this, total_entities_); }
 
-    // Helper lambda that returns a pointer to the component data.
-    auto getPtr = [this, &arch](ComponentTypeID typeID) -> void * {
-      // The raw byte buffer for this component type
-      auto &buf = arch.data[typeID];
-      // Components should all be the same size, so
-      // component size = total bytes / entity count
-      size_t entityCount = arch.entities.size();
-      size_t compSize = buf.size() / entityCount;
-      return static_cast<void *>(buf.data() + entityIdx * compSize);
-    };
-
-    // Expand the parameter pack to build the pointer set
-    return {entityId, static_cast<Components *>(
-                          getPtr(componentTypeID<Components>()))...};
-  }
-
-public:
-  explicit Query(ECS &ecs)
-      : archIt(ecs.archetypes.begin()), archEnd(ecs.archetypes.end()),
-        required(buildSignature<Components...>()) {
-    current = fetchNext();
-  }
-
-  auto begin() { return *this; }
-  auto end() { return sentinel{}; }
-
-  // If we couldn't fetch the last value we've exhausted the iterator.
-  bool operator==(sentinel) const { return !current.has_value(); }
-  bool operator!=(sentinel s) const { return !(*this == s); }
-
-  // Pre-increment: prime the interator, then fetch the next.
-  Query &operator++() {
-    entityIdx++; // without this we'll just stay on current value.
-    current = fetchNext();
-    return *this;
-  }
-
-  // Post-increment: returns the current iterator state after increment.
-  Query operator++(int) {
-    auto prev = *this;
-    ++*this;
-    return prev;
-  }
-
-  // Assumes that we've already checked that val.has_value(). Any C++ `for
-  // (auto &... : iterator)` will have checked through a
-  const std::tuple<Entity, Components *...> &operator*() const {
-    return *current;
-  }
+  size_t size() const { return total_entities_; }
 };
 
 #endif // ECS_H

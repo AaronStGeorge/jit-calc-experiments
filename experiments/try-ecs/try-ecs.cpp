@@ -1,8 +1,8 @@
 #include <cstddef>
+#include <iostream>
 #include <random>
 
 #include <raylib.h>
-#include <vector>
 
 #include "ecs.h"
 
@@ -26,7 +26,7 @@ void createRandomEntities(ECS &ecs, size_t n, int screenWidth,
   std::uniform_real_distribution<float> y(20, screenHeight - 20);
   std::uniform_real_distribution<float> v(-5.0, 5.0);
 
-  for (int i = 0; i < n; i++) {
+  for (size_t i = 0; i < n; i++) {
     ecs.createEntity(Position{.x = x(generator), .y = y(generator)},
                      Velocity{.vx = v(generator), .vy = v(generator)});
   }
