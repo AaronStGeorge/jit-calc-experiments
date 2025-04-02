@@ -1,6 +1,10 @@
 #include <cstddef>
+#include <iomanip>
+#include <ios>
 #include <iostream>
 #include <random>
+#include <utility>
+#include <vector>
 
 #include <raylib.h>
 
@@ -10,11 +14,12 @@
 struct Position {
   float x, y;
 };
+STATIC_ASSERT_POD(Position)
 
-// (Optional) A velocity component if you want to see motion
 struct Velocity {
   float vx, vy;
 };
+STATIC_ASSERT_POD(Velocity)
 
 // Create N random entities.
 void createRandomEntities(ECS &ecs, size_t n, int screenWidth,
@@ -47,6 +52,8 @@ int main() {
 
   // Main loop
   while (!WindowShouldClose()) {
+
+    static constexpr float radius = 10.0f;
     // ----------------------------------------------------------------------
     //  Movement
     // ----------------------------------------------------------------------
@@ -55,10 +62,108 @@ int main() {
       pos->y += vel->vy;
 
       // Bounce off screen edges
-      if (pos->x - 10 < 0 || pos->x + 10 > screenWidth)
+      if (pos->x - radius < 0 || pos->x + radius > screenWidth)
         vel->vx *= -1.0f;
-      if (pos->y - 10 < 0 || pos->y + 10 > screenHeight)
+      if (pos->y - radius < 0 || pos->y + radius > screenHeight)
         vel->vy *= -1.0f;
+    }
+
+    // ----------------------------------------------------------------------
+    // Sweep and Prune on the x-axis to detect overlapping entities
+    // ----------------------------------------------------------------------
+
+    // Edge structure for the x-axis
+    struct Edge {
+      Position *pos;
+      Entity entity;
+      bool isStart; // true if left edge, false if right edge
+
+      // Get the x-coordinate of the edge
+      float value() const {
+        return isStart ? pos->x - radius : pos->x + radius;
+      }
+    };
+
+    // Build a list of Edge structures for x-axis bounding of each circle.
+    std::vector<Edge> edges;
+    // To handle all positions with a query
+    {
+      auto posQuery = ecs.query<Position>();
+      edges.reserve(posQuery.begin() != posQuery.end()
+                        ? (posQuery.end() - posQuery.begin()) * 2
+                        : 0);
+
+      for (auto &[ent, pos] : posQuery) {
+        edges.push_back({pos, ent, true});
+        edges.push_back({pos, ent, false});
+      }
+    }
+
+    // Sort edges and sweep to find x-overlapping entity pairs.
+    std::sort(edges.begin(), edges.end(), [](auto &a, auto &b) {
+      // Sort edges by coordinate; if tie, start edges before end edges
+      if (a.value() == b.value()) {
+        // Put start edges before end edges if x is the same
+        return (a.isStart && !b.isStart);
+      }
+      return a.value() < b.value();
+    });
+
+    // Sweep to find all x-overlapping pairs
+    std::vector<std::pair<Entity, Entity>> overlaps;
+    overlaps.reserve(edges.size()); // Overallocate in case
+
+    // The set of intervals that have started but not ended
+    std::vector<Edge> active;
+
+    for (auto &edge : edges) {
+      if (edge.isStart) {
+        // Check for overlaps with all active intervals
+        for (auto &other : active) {
+          // standard pythagorean theorem to check if two circles overlap
+          bool overlap =
+              (other.pos->x - edge.pos->x) * (other.pos->x - edge.pos->x) +
+                  (other.pos->y - edge.pos->y) * (other.pos->y - edge.pos->y) <=
+              radius * radius;
+          if (overlap) {
+            overlaps.push_back({edge.entity, other.entity});
+          }
+        }
+        active.push_back(edge);
+      } else {
+        // interval ends -> remove from active
+        auto it =
+            std::find_if(active.begin(), active.end(), [&edge](const Edge &e) {
+              return e.entity == edge.entity;
+            });
+        if (it != active.end()) {
+          active.erase(it);
+        }
+      }
+    }
+
+    // ----------------------------------------------------------------------
+    // Collisions
+    // ----------------------------------------------------------------------
+
+    for (auto [a, b] : ecs.query<Position, Velocity>(overlaps)) {
+      auto &[e1, pos1, vel1] = a;
+      auto &[e2, pos2, vel2] = b;
+
+#define PRINT_FP(x)                                                            \
+  std::fixed << std::setprecision(2) << std::left << std::setw(6) << x
+#define PRINT_POS(pos)                                                         \
+  "Position* {.x=" << PRINT_FP(pos->x) << ", .y=" << PRINT_FP(pos->y) << ")"
+#define PRINT_ENTITY(e) "Entity=" << std::left << std::setw(2) << e
+
+      std::cout << PRINT_ENTITY(e1) << " " << PRINT_POS(pos1);
+      std::cout << " <OVERLAP> ";
+      std::cout << PRINT_ENTITY(e2) << " " << PRINT_POS(pos2);
+      std::cout << std::endl;
+
+#undef PRINT_ENTITY
+#undef PRINT_POS
+#undef PRINT_FP
     }
 
     // ----------------------------------------------------------------------

@@ -4,6 +4,7 @@
 //  Archetype
 // ----------------------------------------------------------------------
 
+// Archetype constructor creates empty component data arrays based on signature.
 Archetype::Archetype(ComponentSignature signature) : signature(signature) {
   for (ComponentTypeID type : signature) {
     data[type] = std::vector<uint8_t>();
@@ -25,6 +26,7 @@ ComponentTypeID generateComponentTypeID() {
 // ECS
 // ----------------------------------------------------------------------
 
+// This method fetches an archetype with the matching signature or creates one.
 Archetype *ECS::findOrCreateArchetype(const ComponentSignature &signature) {
   // Check if an archetype with this signature already exists
   for (Archetype &arch : archetypes) {
@@ -47,6 +49,7 @@ void ECS::storeComponentData(Archetype *arch, ComponentTypeID type,
   std::memcpy(buffer.data() + offset, compData, compSize);
 }
 
+// Copy bytes of a single component from source entity to destination entity.
 void ECS::copyComponentData(Archetype *srcArch, Archetype *dstArch,
                             ComponentTypeID type, size_t srcIndex) {
   std::vector<uint8_t> &srcBuffer = srcArch->data[type];
