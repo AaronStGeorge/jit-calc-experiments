@@ -148,6 +148,7 @@ template <typename Container>
 using container_value_t =
     typename std::decay_t<decltype(*std::begin(std::declval<Container>()))>;
 
+// Is this a container of Entity types?
 template <typename Container>
 using is_container_of_entities = is_entity_t<container_value_t<Container>>;
 
@@ -156,6 +157,7 @@ template <typename T> struct is_pair_of_entity : std::false_type {};
 template <>
 struct is_pair_of_entity<std::pair<Entity, Entity>> : std::true_type {};
 
+// Is this a container of std::pair<Entity, Entity> types
 template <typename Container>
 using is_container_of_entity_pairs =
     is_pair_of_entity<container_value_t<Container>>;
@@ -236,6 +238,8 @@ public:
   //     // pos is of type Position *
   //     // vel is of type Velocity *
   //   }
+  //
+  // See note on SFINE bs on other constructor.
   template <typename... Components> Query<Components...> query() {
     return Query<Components...>(*this);
   }
@@ -264,6 +268,17 @@ public:
   //     // e1 and e2 are of type Entity
   //     // pos1 and pos2 are of type Position *
   //     // vel1 and vel2 of of type Velocity *
+  //
+  // Note on SFINE (Substitution Failure Is Not An Error) bullshit: we only want
+  // this constructor to be generated if the container is an iterable collection
+  // of std::pair<Entity, Entity>. If the type is not correct, we want to
+  // generate a malformed lump of code, that will cause the template engine to
+  // just skip it (Substitution Failure Is Not An Error). We do that by handing
+  // the compile time type produced by is_container_of_entity_pairs to
+  // std::enable_if_t. If is_container_of_entity_pairs produces the correct
+  // value we will end up stamping out `int = 0` (which is oddly valid)
+  // otherwise it will stamp out `= 0` which is not valid and the substitution
+  // will not be generated.
   template <
       typename... Components, typename Container,
       std::enable_if_t<is_container_of_entity_pairs<Container>::value, int> = 0>
