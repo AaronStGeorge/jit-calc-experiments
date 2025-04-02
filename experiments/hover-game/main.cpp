@@ -32,7 +32,7 @@ int main(int argc, char **argv) {
 
   auto trctx = CPPTowerRuntimeContext(stack, stackSize, 256);
 
-  InitWindow(screenWidth, screenHeight, "classic game: asteroids");
+  InitWindow(screenWidth, screenHeight, "hover game");
   SetTargetFPS(60);
 
   Vector2 circleCenter = {.x = (float)screenWidth / 2,
