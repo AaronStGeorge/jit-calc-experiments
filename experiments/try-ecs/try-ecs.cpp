@@ -1,14 +1,23 @@
 #include <cstddef>
+#include <cstdint>
 #include <iomanip>
 #include <ios>
 #include <iostream>
 #include <random>
+#include <string>
 #include <utility>
 #include <vector>
 
 #include <raylib.h>
 
 #include "ecs.h"
+#include "linear_algebra.h"
+
+namespace la = linear_algebra;
+
+// ----------------------------------------------------------------------
+//  Components
+// ----------------------------------------------------------------------
 
 // Component for position in 2D space
 struct Position {
@@ -16,10 +25,28 @@ struct Position {
 };
 STATIC_ASSERT_POD(Position)
 
+la::Vector2 toVector2(const Position &pos) { return la::Vector2{pos.x, pos.y}; }
+la::Vector2 toVector2(Position *pos) { return la::Vector2{pos->x, pos->y}; }
+Position toPosition(const la::Vector2 &vec) { return Position{vec.x, vec.y}; }
+
 struct Velocity {
   float vx, vy;
 };
 STATIC_ASSERT_POD(Velocity)
+
+la::Vector2 toVector2(const Velocity &v) { return la::Vector2{v.vx, v.vy}; }
+la::Vector2 toVector2(Velocity *v) { return la::Vector2{v->vx, v->vy}; }
+Velocity toVelocity(const la::Vector2 &vec) { return Velocity{vec.x, vec.y}; }
+
+// ----------------------------------------------------------------------
+//  Utils
+// ----------------------------------------------------------------------
+
+#define PRINT_FP(x)                                                            \
+  std::fixed << std::setprecision(2) << std::left << std::setw(6) << x
+#define PRINT_POS(pos)                                                         \
+  "Position* {.x=" << PRINT_FP(pos->x) << ", .y=" << PRINT_FP(pos->y) << "}"
+#define PRINT_ENTITY(e) "Entity=" << std::left << std::setw(2) << e
 
 // Create N random entities.
 void createRandomEntities(ECS &ecs, size_t n, int screenWidth,
@@ -37,22 +64,31 @@ void createRandomEntities(ECS &ecs, size_t n, int screenWidth,
   }
 }
 
+// ----------------------------------------------------------------------
+//  The business
+// ----------------------------------------------------------------------
+
 int main() {
   // Initialize raylib
-  constexpr int screenWidth = 800;
-  constexpr int screenHeight = 450;
+  constexpr int screenWidth = 400;
+  constexpr int screenHeight = 400;
   InitWindow(screenWidth, screenHeight, "Simple ECS + Raylib Example");
   SetTargetFPS(60);
 
   ECS ecs;
 
   // Create 10 random entities
-  size_t n = 10;
-  createRandomEntities(ecs, n, screenWidth, screenHeight);
+  // size_t n = 10;
+  // createRandomEntities(ecs, n, screenWidth, screenHeight);
 
-  // Main loop
+  // Two entities designed to show the bug
+  ecs.createEntity(Position{.x = 66.55f, .y = 22.62f},
+                   Velocity{.vx = 0.0f, .vy = -2.0f});
+  ecs.createEntity(Position{.x = 73.53f, .y = 15.69f},
+                   Velocity{.vx = 0.0f, .vy = 0.0f});
+
+  // Game loop
   while (!WindowShouldClose()) {
-
     static constexpr float radius = 10.0f;
     // ----------------------------------------------------------------------
     //  Movement
@@ -79,9 +115,7 @@ int main() {
       bool isStart; // true if left edge, false if right edge
 
       // Get the x-coordinate of the edge
-      float value() const {
-        return isStart ? pos->x - radius : pos->x + radius;
-      }
+      float x() const { return isStart ? pos->x - radius : pos->x + radius; }
     };
 
     // Build a list of Edge structures for x-axis bounding of each circle.
@@ -101,12 +135,12 @@ int main() {
 
     // Sort edges and sweep to find x-overlapping entity pairs.
     std::sort(edges.begin(), edges.end(), [](auto &a, auto &b) {
-      // Sort edges by coordinate; if tie, start edges before end edges
-      if (a.value() == b.value()) {
+      // Sort edges by x coordinate; if tie, start edges before end edges
+      if (a.x() == b.x()) {
         // Put start edges before end edges if x is the same
         return (a.isStart && !b.isStart);
       }
-      return a.value() < b.value();
+      return a.x() < b.x();
     });
 
     // Sweep to find all x-overlapping pairs
@@ -124,7 +158,7 @@ int main() {
           bool overlap =
               (other.pos->x - edge.pos->x) * (other.pos->x - edge.pos->x) +
                   (other.pos->y - edge.pos->y) * (other.pos->y - edge.pos->y) <=
-              radius * radius;
+              4.0 * radius * radius;
           if (overlap) {
             overlaps.push_back({edge.entity, other.entity});
           }
@@ -136,9 +170,8 @@ int main() {
             std::find_if(active.begin(), active.end(), [&edge](const Edge &e) {
               return e.entity == edge.entity;
             });
-        if (it != active.end()) {
-          active.erase(it);
-        }
+        assert(it != active.end() && "start edge not found");
+        active.erase(it);
       }
     }
 
@@ -147,23 +180,29 @@ int main() {
     // ----------------------------------------------------------------------
 
     for (auto [a, b] : ecs.query<Position, Velocity>(overlaps)) {
-      auto &[e1, pos1, vel1] = a;
-      auto &[e2, pos2, vel2] = b;
+      auto &[entity_a, pos_a, vel_a] = a;
+      auto &[entity_b, pos_b, vel_b] = b;
 
-#define PRINT_FP(x)                                                            \
-  std::fixed << std::setprecision(2) << std::left << std::setw(6) << x
-#define PRINT_POS(pos)                                                         \
-  "Position* {.x=" << PRINT_FP(pos->x) << ", .y=" << PRINT_FP(pos->y) << ")"
-#define PRINT_ENTITY(e) "Entity=" << std::left << std::setw(2) << e
+      la::Vector2 v_a = toVector2(vel_a);
+      la::Vector2 a_normal = (toVector2(pos_a) - toVector2(pos_b)).normalized();
 
-      std::cout << PRINT_ENTITY(e1) << " " << PRINT_POS(pos1);
+      la::Vector2 v_a_normal = v_a.dot(a_normal) * a_normal;
+      la::Vector2 v_a_tangential = v_a - v_a_normal;
+
+      la::Vector2 v_b = toVector2(vel_b);
+      la::Vector2 b_normal = (toVector2(pos_b) - toVector2(pos_a)).normalized();
+
+      la::Vector2 v_b_normal = v_b.dot(b_normal) * b_normal;
+      la::Vector2 v_b_tangential = v_b - v_b_normal;
+
+      *vel_a = toVelocity(v_a_tangential + v_b_normal);
+      *vel_b = toVelocity(v_b_tangential + v_a_normal);
+
+      std::cout << "=================================" << std::endl;
+      std::cout << PRINT_ENTITY(entity_a) << " " << PRINT_POS(pos_a);
       std::cout << " <OVERLAP> ";
-      std::cout << PRINT_ENTITY(e2) << " " << PRINT_POS(pos2);
+      std::cout << PRINT_ENTITY(entity_b) << " " << PRINT_POS(pos_b);
       std::cout << std::endl;
-
-#undef PRINT_ENTITY
-#undef PRINT_POS
-#undef PRINT_FP
     }
 
     // ----------------------------------------------------------------------
@@ -176,6 +215,8 @@ int main() {
     for (auto &[ent, pos] : ecs.query<Position>()) {
       // A simple white circle at (pos->x, pos->y)
       DrawCircle(static_cast<int>(pos->x), static_cast<int>(pos->y), 10, WHITE);
+      DrawText(std::to_string(ent).c_str(), static_cast<int>(pos->x) - 2,
+               static_cast<int>(pos->y) - 4, 6, BLACK);
     }
 
     EndDrawing();

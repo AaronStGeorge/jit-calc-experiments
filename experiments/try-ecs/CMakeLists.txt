@@ -1,4 +1,4 @@
-add_llvm_executable(try-ecs ecs.h ecs.cpp try-ecs.cpp)
+add_llvm_executable(try-ecs ecs.h ecs.cpp linear_algebra.h linear_algebra.cpp try-ecs.cpp)
 
 target_link_libraries(try-ecs
     raylib

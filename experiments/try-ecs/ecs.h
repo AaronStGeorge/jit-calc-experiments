@@ -329,36 +329,78 @@ private:
 // Query
 // ----------------------------------------------------------------------
 
-// Query objects let us iterate over matching entities and their components.
-template <typename... Components> class Query {
-  struct masked_archetype {
-    Archetype *arch;
-    // Entities to iterate in this archetype. Without a mask, iterate through
-    // all the entities.
-    std::optional<llvm::SmallVector<Entity, 8>> mask;
+struct ArchetypeMask {
+  llvm::SmallVector<Entity, 8> entities;
+  llvm::SmallVector<size_t, 8> indexes;
 
-    size_t size() const {
-      if (mask) {
-        return mask->size();
-      }
-      return arch->entities.size();
+  size_t size() const {
+    assert(entities.size() == indexes.size() &&
+           "entity and indexes should be 1 to 1");
+    return entities.size();
+  }
+};
+
+struct MaskedArchetype {
+  // LocalIndex type exists to avoid confusing the index into MaskedArchetype
+  // with an index into Archetype.
+  class LocalIndex {
+    friend MaskedArchetype;
+    size_t index;
+
+  public:
+    LocalIndex() : index(0) {}
+    explicit LocalIndex(size_t index) : index(index) {}
+
+    // Pre-increment
+    LocalIndex &operator++() {
+      ++index;
+      return *this;
+    }
+    // Post-increment
+    LocalIndex operator++(int) {
+      LocalIndex temp = *this;
+      ++(*this);
+      return temp;
     }
 
-    Entity &operator[](size_t index) {
-      if (mask) {
-        assert(index < mask.value().size() && "out of bounds");
-        return mask.value()[index];
-      }
-      assert(index < arch->entities.size() && "out of bounds");
-      return arch->entities[index];
-    }
+    // Comparison operators
+    bool operator<(const size_t &other) const { return index < other; }
   };
 
+  Archetype *archetype;
+  // Entities to iterate in this archetype. Without a mask, iterate through
+  // all the entities.
+  std::optional<ArchetypeMask> mask;
+
+  size_t size() const {
+    if (mask) {
+      return mask->size();
+    }
+    return archetype->entities.size();
+  }
+
+  size_t index(LocalIndex idx) {
+    if (mask) {
+      return (*mask).indexes[idx.index];
+    }
+    return idx.index;
+  }
+
+  size_t entity(LocalIndex idx) {
+    if (mask) {
+      return (*mask).entities[idx.index];
+    }
+    return archetype->entities[idx.index];
+  }
+};
+
+// Query objects let us iterate over matching entities and their components.
+template <typename... Components> class Query {
   // Which archetypes match the query signature. Using small vector to avoid
   // heap allocation for the common case.
-  llvm::SmallVector<masked_archetype, 128> matching_archetypes_;
+  llvm::SmallVector<MaskedArchetype, 128> matchingArchetypes;
   // Total number of entities in all matching archetypes
-  std::size_t total_entities_ = 0;
+  std::size_t totalEntityCount = 0;
 
 public:
   class iterator {
@@ -370,34 +412,36 @@ public:
     using pointer = Packet<Components...> *;
     using reference = Packet<Components...> &;
 
-    iterator(const Query<Components...> *q, size_t globalIdx = 0)
-        : query_(q), global_idx_(globalIdx) {
-      if (globalIdx < query_->total_entities_) {
+    iterator(const Query<Components...> *query, size_t globalIdx)
+        : query(query), globalIdx(globalIdx) {
+      if (globalIdx < query->totalEntityCount) {
         // Build the packet for the initial position
         setIndexesAndBuildPacket(globalIdx);
       }
     }
 
     // Dereference
-    Packet<Components...> &operator*() { return packet_; }
-    const Packet<Components...> &operator*() const { return packet_; }
-    Packet<Components...> *operator->() { return &packet_; }
-    const Packet<Components...> *operator->() const { return &packet_; }
+    Packet<Components...> &operator*() { return packet; }
+    const Packet<Components...> &operator*() const { return packet; }
+    Packet<Components...> *operator->() { return &packet; }
+    const Packet<Components...> *operator->() const { return &packet; }
 
     // Pre-increment
     iterator &operator++() {
-      global_idx_++;
-      if (global_idx_ >= query_->total_entities_) {
+      globalIdx++;
+      if (globalIdx >= query->totalEntityCount) {
         // Out of bounds
         return *this;
       }
 
-      if (++entity_idx_ < arch_.size()) {
+      assert(currentArchetype.has_value() &&
+             "operator++ called without valid arch");
+      if (++localIdx < currentArchetype.value().size()) {
         // Still within the current archetype
-        packet_ = buildPacket(arch_, entity_idx_);
+        setPacket();
       } else {
         // Move to the next archetype
-        setIndexesAndBuildPacket(global_idx_);
+        setIndexesAndBuildPacket(globalIdx);
       }
 
       return *this;
@@ -411,7 +455,7 @@ public:
 
     // Pre-decrement
     iterator &operator--() {
-      setIndexesAndBuildPacket(global_idx_ - 1);
+      setIndexesAndBuildPacket(globalIdx - 1);
       return *this;
     }
     // Post-decrement
@@ -423,106 +467,112 @@ public:
 
     // Random-access: +=
     iterator &operator+=(difference_type n) {
-      setIndexesAndBuildPacket(global_idx_ + n);
+      setIndexesAndBuildPacket(globalIdx + n);
       return *this;
     }
     // Random-access: -=
     iterator &operator-=(difference_type n) {
-      setIndexesAndBuildPacket(global_idx_ - n);
+      setIndexesAndBuildPacket(globalIdx - n);
       return *this;
     }
 
     // Random-access: it + n
     friend iterator operator+(const iterator &it, difference_type n) {
-      return iterator(it.query_, it.global_idx_ + n);
+      return iterator(it.query, it.globalIdx + n);
     }
     friend iterator operator+(difference_type n, const iterator &it) {
-      return iterator(it.query_, it.global_idx_ + n);
+      return iterator(it.query, it.globalIdx + n);
     }
 
     // Random-access: it - n
     friend iterator operator-(const iterator &it, difference_type n) {
-      return iterator(it.query_, it.global_idx_ - n);
+      return iterator(it.query, it.globalIdx - n);
     }
 
     // Random-access: difference between two iterators
     friend difference_type operator-(const iterator &lhs, const iterator &rhs) {
-      return (lhs.global_idx_ - rhs.global_idx_);
+      return (lhs.globalIdx - rhs.globalIdx);
     }
 
     // Comparison operators
     bool operator==(const iterator &other) const {
-      return global_idx_ == other.global_idx_;
+      return globalIdx == other.globalIdx;
     }
     bool operator!=(const iterator &other) const {
-      return global_idx_ != other.global_idx_;
+      return globalIdx != other.globalIdx;
     }
     bool operator<(const iterator &other) const {
-      return global_idx_ < other.global_idx_;
+      return globalIdx < other.globalIdx;
     }
     bool operator>(const iterator &other) const {
-      return global_idx_ > other.global_idx_;
+      return globalIdx > other.globalIdx;
     }
     bool operator<=(const iterator &other) const {
-      return global_idx_ <= other.global_idx_;
+      return globalIdx <= other.globalIdx;
     }
     bool operator>=(const iterator &other) const {
-      return global_idx_ >= other.global_idx_;
+      return globalIdx >= other.globalIdx;
     }
 
   private:
-    const Query<Components...> *query_;
+    const Query<Components...> *query;
     // Materialized packet.
-    Packet<Components...> packet_;
-    // Global index into matching archetypes.
-    size_t global_idx_;
-    // Index into the current archetype.
-    size_t entity_idx_;
-    // Current archetype.
-    masked_archetype arch_;
+    Packet<Components...> packet;
+    // Global index into to the total entity count. For example if we have 2
+    // matching archetypes with 10 entities each, this index may be 15.
+    size_t globalIdx;
+    // Index into the current masked archetype. Note, this is not the index into
+    // the archetype itself. For example, the archetype may have 16 entities but
+    // our mask limits our view to 2 entities. The local index---into the masked
+    // archetype---will be 0 and 1, but the index into the underlying archetype
+    // could be 5 and 8.
+    MaskedArchetype::LocalIndex localIdx;
+    // Current masked archetype, localIdx attaches to this
+    // archetype.
+    std::optional<MaskedArchetype> currentArchetype = std::nullopt;
 
-    Packet<Components...> buildPacket(masked_archetype maskedArch,
-                                      size_t entityIdx) {
-      // The current entity ID in this archetype
-      Entity entityId = maskedArch[entityIdx];
-
+    void setPacket() {
+      assert(currentArchetype.has_value() &&
+             "setPacket called without valid arch");
       // Helper lambda that returns a pointer to the component data.
-      auto getPtr = [maskedArch, entityIdx](ComponentTypeID typeID) -> void * {
+      auto getPtr = [this](ComponentTypeID typeID) -> void * {
         // The raw byte buffer for this component type
-        auto &buf = maskedArch.arch->data[typeID];
+        auto &buf = currentArchetype.value().archetype->data[typeID];
         // Components should all be the same size, so
         // component size = total bytes / entity count
-        size_t entityCount = maskedArch.arch->entities.size();
+        size_t entityCount =
+            currentArchetype.value().archetype->entities.size();
         size_t compSize = buf.size() / entityCount;
-        return static_cast<void *>(buf.data() + entityIdx * compSize);
+        size_t archIdx = currentArchetype.value().index(localIdx);
+        return static_cast<void *>(buf.data() + archIdx * compSize);
       };
 
       // Expand the parameter pack to build the pointer set
-      return {entityId, static_cast<Components *>(
-                            getPtr(componentTypeID<Components>()))...};
+      packet = {
+          currentArchetype.value().entity(localIdx),
+          static_cast<Components *>(getPtr(componentTypeID<Components>()))...};
     }
 
     // Based on new global index reset indexes into local archetypes and build
     // packet based on updated indexes.
-    void setIndexesAndBuildPacket(size_t globalIdx) {
-      if (globalIdx >= query_->total_entities_) {
+    void setIndexesAndBuildPacket(size_t newGlobalIndex) {
+      if (newGlobalIndex >= query->totalEntityCount) {
         // Out of bounds
         return;
       }
 
-      this->global_idx_ = globalIdx;
-      size_t idx = globalIdx;
+      this->globalIdx = newGlobalIndex;
+      size_t tmpIdx = newGlobalIndex;
       // Count entities in matching archetypes until we reach the global index.
-      for (const masked_archetype &matching_arch :
-           query_->matching_archetypes_) {
-        size_t entityCount = matching_arch.size();
-        if (idx < entityCount) {
-          arch_ = matching_arch;
-          entity_idx_ = idx;
-          packet_ = buildPacket(arch_, entity_idx_);
+      for (const MaskedArchetype &arch : query->matchingArchetypes) {
+        size_t entityCount = arch.size();
+        if (tmpIdx < entityCount) {
+          currentArchetype = arch;
+          localIdx = MaskedArchetype::LocalIndex(tmpIdx);
+          setPacket();
           return;
         }
-        idx -= entityCount;
+        tmpIdx -= entityCount;
       }
 
       llvm_unreachable("Index out of bounds");
@@ -539,39 +589,48 @@ public:
 
       // We've found a matching archetype
       size_t entityCount = arch.entities.size();
-      total_entities_ += entityCount;
-      matching_archetypes_.push_back({&arch, std::nullopt});
+      totalEntityCount += entityCount;
+      matchingArchetypes.push_back({&arch, std::nullopt});
     }
   }
 
   template <typename Container> Query(ECS &ecs, Container &&entities) {
     ComponentSignature required(buildSignature<Components...>());
 
-    total_entities_ = entities.size();
+    totalEntityCount = entities.size();
     for (Entity entity : entities) {
       assert(ecs.entityLocations.find(entity) != ecs.entityLocations.end() &&
              "entity doesn't have associated archetype");
-      Archetype *arch = ecs.entityLocations[entity].archetype;
+      EntityRecord &entityRecord = ecs.entityLocations[entity];
 
       // Sanity check if archetype has all required components
-      if ((arch->signature & required) != required) {
-        assert(false && "entity doesn't have required signature");
-      }
+      assert((entityRecord.archetype->signature & required) == required &&
+             "entity doesn't have required signature");
 
-      // compact if possible
-      if (!matching_archetypes_.empty() &&
-          matching_archetypes_.back().arch == arch) {
-        matching_archetypes_.back().mask.value().push_back(entity);
+      // Compact if possible.
+      if (!matchingArchetypes.empty() &&
+          matchingArchetypes.back().archetype == entityRecord.archetype) {
+        ArchetypeMask &mask = *matchingArchetypes.back().mask;
+        mask.entities.push_back(entity);
+        mask.indexes.push_back(entityRecord.index);
         continue;
       }
-      matching_archetypes_.push_back({arch, {{entity}}});
+
+      // This entity comes from a new archetype, create new container.
+      matchingArchetypes.push_back(MaskedArchetype{
+          .archetype = entityRecord.archetype,
+          .mask = std::make_optional<ArchetypeMask>({
+              .entities = {entity},
+              .indexes = {entityRecord.index},
+          }),
+      });
     }
   }
 
   iterator begin() const { return iterator(this, 0); }
-  iterator end() const { return iterator(this, total_entities_); }
+  iterator end() const { return iterator(this, totalEntityCount); }
 
-  size_t size() const { return total_entities_; }
+  size_t size() const { return totalEntityCount; }
 };
 
 #endif // ECS_H
