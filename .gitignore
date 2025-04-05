@@ -20,3 +20,6 @@ build
 experiments/slow-roll-fibonacci-2/practice-interpreter/myenv/*
 
 *.pyc
+
+# idk what macos does with this
+*.DS_Store
