@@ -77,15 +77,9 @@ int main() {
 
   ECS ecs;
 
-  // Create 10 random entities
-  // size_t n = 10;
-  // createRandomEntities(ecs, n, screenWidth, screenHeight);
-
-  // Two entities designed to show the bug
-  ecs.createEntity(Position{.x = 66.55f, .y = 22.62f},
-                   Velocity{.vx = 0.0f, .vy = -2.0f});
-  ecs.createEntity(Position{.x = 73.53f, .y = 15.69f},
-                   Velocity{.vx = 0.0f, .vy = 0.0f});
+  // Create 20 random entities
+  size_t n = 20;
+  createRandomEntities(ecs, n, screenWidth, screenHeight);
 
   // Game loop
   while (!WindowShouldClose()) {
@@ -97,11 +91,22 @@ int main() {
       pos->x += vel->vx;
       pos->y += vel->vy;
 
-      // Bounce off screen edges
-      if (pos->x - radius < 0 || pos->x + radius > screenWidth)
+      // Bounce off screen edges and correct position
+      if (pos->x - radius < 0) {
         vel->vx *= -1.0f;
-      if (pos->y - radius < 0 || pos->y + radius > screenHeight)
+        pos->x = radius + 0.1f; // Move slightly inside boundary
+      } else if (pos->x + radius > screenWidth) {
+        vel->vx *= -1.0f;
+        pos->x = screenWidth - radius - 0.1f; // Move slightly inside boundary
+      }
+
+      if (pos->y - radius < 0) {
         vel->vy *= -1.0f;
+        pos->y = radius + 0.1f; // Move slightly inside boundary
+      } else if (pos->y + radius > screenHeight) {
+        vel->vy *= -1.0f;
+        pos->y = screenHeight - radius - 0.1f; // Move slightly inside boundary
+      }
     }
 
     // ----------------------------------------------------------------------
@@ -198,11 +203,18 @@ int main() {
       *vel_a = toVelocity(v_a_tangential + v_b_normal);
       *vel_b = toVelocity(v_b_tangential + v_a_normal);
 
-      std::cout << "=================================" << std::endl;
-      std::cout << PRINT_ENTITY(entity_a) << " " << PRINT_POS(pos_a);
-      std::cout << " <OVERLAP> ";
-      std::cout << PRINT_ENTITY(entity_b) << " " << PRINT_POS(pos_b);
-      std::cout << std::endl;
+      // Separate the balls to prevent sticking
+      float distance = (toVector2(pos_a) - toVector2(pos_b)).magnitude();
+      float overlap = (2 * radius) - distance;
+
+      if (overlap > 0) {
+        // Move balls apart along the collision normal
+        float separation = overlap * 0.5f + 0.1f; // Add a small extra gap
+        pos_a->x += a_normal.x * separation;
+        pos_a->y += a_normal.y * separation;
+        pos_b->x += b_normal.x * separation;
+        pos_b->y += b_normal.y * separation;
+      }
     }
 
     // ----------------------------------------------------------------------
