@@ -12,7 +12,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     with open(args.file, "rb") as file:
-        stream = iter(bytes(file.read()))
-        module = wasm.decode(stream)
+        module_bytes = bytes(file.read())
+        module = wasm.decode(module_bytes)
 
         pprint.pprint(module)
