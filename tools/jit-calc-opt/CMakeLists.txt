@@ -16,17 +16,10 @@ target_link_libraries(jit-calc-opt PRIVATE
   Wasm
   WasmTransforms
 
-  MLIRAffineAnalysis
-  MLIRAnalysis
-  MLIRCastInterfaces
-  MLIRDialect
   MLIROptLib
-  MLIRParser
-  MLIRPass
-  MLIRTransforms
-  MLIRTransformUtils
-  MLIRSupport
-  MLIRIR
+  MLIRRegisterAllDialects
+  MLIRRegisterAllExtensions
+  MLIRRegisterAllPasses
 
   # TODO: Remove when registerAllGPUToLLVMIRTranslations is no longer
   # registered directly in mlir-opt.cpp.

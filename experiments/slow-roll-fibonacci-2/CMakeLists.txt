@@ -8,16 +8,11 @@ set(LLVM_LINK_COMPONENTS
 add_llvm_executable(srf2-driver srf2-driver.cpp)
 llvm_update_compile_flags(srf2-driver)
 target_link_libraries(srf2-driver PRIVATE
-  MLIRAnalysis
-  MLIRBuiltinToLLVMIRTranslation
-  MLIRExecutionEngine
-  MLIRIR
   MLIRJitRunner
-  MLIRLLVMDialect
-  MLIRLLVMToLLVMIRTranslation
-  MLIRToLLVMIRTranslationRegistration
-  MLIRParser
   MLIRTargetLLVMIRExport
+  MLIRRegisterAllDialects
+  MLIRRegisterAllExtensions
+  MLIRRegisterAllPasses
   MLIRSupport
   Wasm
   WasmTransforms

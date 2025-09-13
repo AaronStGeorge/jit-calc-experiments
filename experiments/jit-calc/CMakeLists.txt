@@ -18,6 +18,9 @@ target_link_libraries(jit-calc PRIVATE
   MLIRToLLVMIRTranslationRegistration
   MLIRParser
   MLIRTargetLLVMIRExport
+  MLIRRegisterAllDialects
+  MLIRRegisterAllExtensions
+  MLIRRegisterAllPasses
   MLIRSupport
   LLVMLineEditor
   )
