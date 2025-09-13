@@ -1,4 +1,4 @@
-# jit-calc
+# `jit-calc`
 
 We want a basic command line calculator... but wouldn't it be fun if it were
 massively over-engineered? We could implement a simple interpreter to do the

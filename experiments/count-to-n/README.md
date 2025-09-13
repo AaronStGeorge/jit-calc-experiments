@@ -1,4 +1,4 @@
-# count-to-n
+# `count-to-n`
 
 ## Why
 

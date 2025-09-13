@@ -1,4 +1,4 @@
-# slow-roll-fibonacci-2
+# `slow-roll-fibonacci-2`
 
 ## Running
 
