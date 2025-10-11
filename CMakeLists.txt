@@ -3,7 +3,7 @@ project(jit-calc-experiments LANGUAGES CXX C ASM)
 
 set(CMAKE_BUILD_WITH_INSTALL_NAME_DIR ON)
 
-set(CMAKE_CXX_STANDARD 17 CACHE STRING "C++ standard to conform to")
+set(CMAKE_CXX_STANDARD 20 CACHE STRING "C++ standard to conform to")
 set(CMAKE_C_STANDARD 11 CACHE STRING "C standard to conform to")
 
 find_package(MLIR REQUIRED CONFIG)

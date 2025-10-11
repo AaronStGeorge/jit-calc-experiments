@@ -8,9 +8,11 @@
 #include <cstdint>
 #include <cstring>
 #include <optional>
+#include <ranges>
 #include <tuple>
 #include <type_traits>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 #include "llvm/ADT/STLExtras.h"
@@ -140,27 +142,18 @@ struct EntityRecord {
 // Evil template meta-programming bullshit
 // ----------------------------------------------------------------------
 
-// Check if T is exactly 'Entity'
-template <typename T> using is_entity_t = std::is_same<T, Entity>;
-
 // Determine if Container yields Entity or pair-of-entity
 template <typename Container>
-using container_value_t =
-    typename std::decay_t<decltype(*std::begin(std::declval<Container>()))>;
+using container_value_t = std::ranges::range_value_t<Container>;
 
 // Is this a container of Entity types?
 template <typename Container>
-using is_container_of_entities = is_entity_t<container_value_t<Container>>;
+concept EntityContainer = std::same_as<container_value_t<Container>, Entity>;
 
-// Check if T is a pair of Entity types
-template <typename T> struct is_pair_of_entity : std::false_type {};
-template <>
-struct is_pair_of_entity<std::pair<Entity, Entity>> : std::true_type {};
-
-// Is this a container of std::pair<Entity, Entity> types
+// Is this a container of std::pair<Entity, Entity> types?
 template <typename Container>
-using is_container_of_entity_pairs =
-    is_pair_of_entity<container_value_t<Container>>;
+concept EntityPairContainer =
+    std::same_as<container_value_t<Container>, std::pair<Entity, Entity>>;
 
 // ----------------------------------------------------------------------
 // ECS
@@ -238,8 +231,6 @@ public:
   //     // pos is of type Position *
   //     // vel is of type Velocity *
   //   }
-  //
-  // See note on SFINE bs on other constructor.
   template <typename... Components> Query<Components...> query() {
     return Query<Components...>(*this);
   }
@@ -248,9 +239,7 @@ public:
   // assumed (and asserted) that provided entities have the required signature.
   // This is useful for querying a known subset of entities rather than scanning
   // all.
-  template <
-      typename... Components, typename Container,
-      std::enable_if_t<is_container_of_entities<Container>::value, int> = 0>
+  template <typename... Components, EntityContainer Container>
   Query<Components...> query(Container &&container) {
     return Query<Components...>(*this, std::forward<Container>(container));
   }
@@ -268,20 +257,7 @@ public:
   //     // e1 and e2 are of type Entity
   //     // pos1 and pos2 are of type Position *
   //     // vel1 and vel2 of of type Velocity *
-  //
-  // Note on SFINE (Substitution Failure Is Not An Error) bullshit: we only want
-  // this constructor to be generated if the container is an iterable collection
-  // of std::pair<Entity, Entity>. If the type is not correct, we want to
-  // generate a malformed lump of code, that will cause the template engine to
-  // just skip it (Substitution Failure Is Not An Error). We do that by handing
-  // the compile time type produced by is_container_of_entity_pairs to
-  // std::enable_if_t. If is_container_of_entity_pairs produces the correct
-  // value we will end up stamping out `int = 0` (which is oddly valid)
-  // otherwise it will stamp out `= 0` which is not valid and the substitution
-  // will not be generated.
-  template <
-      typename... Components, typename Container,
-      std::enable_if_t<is_container_of_entity_pairs<Container>::value, int> = 0>
+  template <typename... Components, EntityPairContainer Container>
   auto query(Container &&container) {
     return llvm::map_range(container, [this](std::pair<Entity, Entity> p) {
       // Create array because pair doesn't support iteration.
