@@ -4,6 +4,7 @@
 #include <array>
 #include <bitset>
 #include <cassert>
+#include <compare>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
@@ -67,7 +68,6 @@ public:
     bool operator==(const iterator &other) const {
       return (signature == other.signature) && (idx == other.idx);
     }
-    bool operator!=(const iterator &other) const { return !(*this == other); }
 
     // Dereference: returns the index of the set bit
     std::size_t operator*() const { return idx; }
@@ -139,10 +139,10 @@ struct EntityRecord {
 };
 
 // ----------------------------------------------------------------------
-// Evil template meta-programming bullshit
+// Type constraints, AKA concepts.
 // ----------------------------------------------------------------------
 
-// Determine if Container yields Entity or pair-of-entity
+// What's this container's entity type?
 template <typename Container>
 using container_value_t = std::ranges::range_value_t<Container>;
 
@@ -471,23 +471,11 @@ public:
     }
 
     // Comparison operators
+    std::strong_ordering operator<=>(const iterator &other) const {
+      return globalIdx <=> other.globalIdx;
+    }
     bool operator==(const iterator &other) const {
       return globalIdx == other.globalIdx;
-    }
-    bool operator!=(const iterator &other) const {
-      return globalIdx != other.globalIdx;
-    }
-    bool operator<(const iterator &other) const {
-      return globalIdx < other.globalIdx;
-    }
-    bool operator>(const iterator &other) const {
-      return globalIdx > other.globalIdx;
-    }
-    bool operator<=(const iterator &other) const {
-      return globalIdx <= other.globalIdx;
-    }
-    bool operator>=(const iterator &other) const {
-      return globalIdx >= other.globalIdx;
     }
 
   private:
