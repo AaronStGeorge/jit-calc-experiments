@@ -110,10 +110,6 @@ struct Archetype {
 // Utilities
 // ----------------------------------------------------------------------
 
-#define STATIC_ASSERT_POD(type)                                                \
-  static_assert(std::is_trivial_v<type> && std::is_standard_layout_v<type>,    \
-                #type " is not a POD type!");
-
 // Declaration of a single global function that returns new IDs each time.
 // This will be defined in the .cpp to ensure exactly one shared counter.
 ComponentTypeID generateComponentTypeID();
@@ -155,17 +151,24 @@ template <typename Container>
 concept EntityPairContainer =
     std::same_as<container_value_t<Container>, std::pair<Entity, Entity>>;
 
+// Components must be POD since they're stored as raw bytes and moved via
+// memcpy. We also send them into generated code, dealing with complex layouts
+// would make the ABI a real pain.
+template <typename T>
+concept Component = std::is_trivial_v<T> && std::is_standard_layout_v<T>;
+
 // ----------------------------------------------------------------------
 // ECS
 // ----------------------------------------------------------------------
 
 // Forward-declare the Query
-template <typename... Components> class Query;
+template <Component... Components> class Query;
 
 class ECS {
 public:
   // Creates a new entity with a given set of components
-  template <typename... Components> Entity createEntity(Components &&...comps) {
+  template <Component... Components>
+  Entity createEntity(Components &&...comps) {
     ComponentSignature signature = buildSignature<Components...>();
 
     // Find or create an archetype with that signature
@@ -187,15 +190,14 @@ public:
 
   // Add a component to an existing entity (migrating it to a new archetype if
   // needed)
-  template <typename Component>
-  void addComponent(Entity entity, Component &&comp) {
+  template <Component C> void addComponent(Entity entity, C &&component) {
     EntityRecord record = entityLocations[entity];
     Archetype *oldArchetype = record.archetype;
     std::size_t oldIdx = record.index;
 
     // Build new signature = old + new bit
     ComponentSignature newSignature = oldArchetype->signature;
-    ComponentTypeID newType = componentTypeID<Component>();
+    ComponentTypeID newType = componentTypeID<C>();
     if (newSignature.test(newType)) {
       // Nothing to do here
       return;
@@ -212,7 +214,7 @@ public:
       copyComponentData(oldArchetype, newArch, type, oldIdx);
     }
     // Add the new component's data
-    storeComponentData(newArch, newType, &comp, sizeof(Component));
+    storeComponentData(newArch, newType, &component, sizeof(C));
 
     // Update record
     entityLocations[entity] = {newArch, newIndex};
@@ -231,7 +233,7 @@ public:
   //     // pos is of type Position *
   //     // vel is of type Velocity *
   //   }
-  template <typename... Components> Query<Components...> query() {
+  template <Component... Components> Query<Components...> query() {
     return Query<Components...>(*this);
   }
 
@@ -239,7 +241,7 @@ public:
   // assumed (and asserted) that provided entities have the required signature.
   // This is useful for querying a known subset of entities rather than scanning
   // all.
-  template <typename... Components, EntityContainer Container>
+  template <Component... Components, EntityContainer Container>
   Query<Components...> query(Container &&container) {
     return Query<Components...>(*this, std::forward<Container>(container));
   }
@@ -257,7 +259,7 @@ public:
   //     // e1 and e2 are of type Entity
   //     // pos1 and pos2 are of type Position *
   //     // vel1 and vel2 of of type Velocity *
-  template <typename... Components, EntityPairContainer Container>
+  template <Component... Components, EntityPairContainer Container>
   auto query(Container &&container) {
     return llvm::map_range(container, [this](std::pair<Entity, Entity> p) {
       // Create array because pair doesn't support iteration.
@@ -298,7 +300,7 @@ private:
                                  Entity entity);
 
   // Let Query access ECS internals
-  template <typename... Components> friend class Query;
+  template <Component... Components> friend class Query;
 };
 
 // ----------------------------------------------------------------------
@@ -371,7 +373,7 @@ struct MaskedArchetype {
 };
 
 // Query objects let us iterate over matching entities and their components.
-template <typename... Components> class Query {
+template <Component... Components> class Query {
   // Which archetypes match the query signature. Using small vector to avoid
   // heap allocation for the common case.
   llvm::SmallVector<MaskedArchetype, 128> matchingArchetypes;
@@ -558,7 +560,7 @@ public:
     }
   }
 
-  template <typename Container> Query(ECS &ecs, Container &&entities) {
+  template <EntityContainer Container> Query(ECS &ecs, Container &&entities) {
     ComponentSignature required(buildSignature<Components...>());
 
     totalEntityCount = entities.size();

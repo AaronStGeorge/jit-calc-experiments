@@ -23,7 +23,6 @@ namespace la = linear_algebra;
 struct Position {
   float x, y;
 };
-STATIC_ASSERT_POD(Position)
 
 la::Vector2 toVector2(const Position &pos) { return la::Vector2{pos.x, pos.y}; }
 la::Vector2 toVector2(Position *pos) { return la::Vector2{pos->x, pos->y}; }
@@ -32,7 +31,6 @@ Position toPosition(const la::Vector2 &vec) { return Position{vec.x, vec.y}; }
 struct Velocity {
   float vx, vy;
 };
-STATIC_ASSERT_POD(Velocity)
 
 la::Vector2 toVector2(const Velocity &v) { return la::Vector2{v.vx, v.vy}; }
 la::Vector2 toVector2(Velocity *v) { return la::Vector2{v->vx, v->vy}; }
