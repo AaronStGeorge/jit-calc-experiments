@@ -15,6 +15,7 @@ llvm_update_compile_flags(srf3-translate)
 target_link_libraries(srf3-translate PRIVATE
   ${dialect_libs}
   ${translation_libs}
+  MLIRRegisterAllDialects
   )
 
 mlir_check_all_link_libraries(srf3-translate)
