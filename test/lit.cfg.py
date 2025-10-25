@@ -67,6 +67,6 @@ tool_dirs = [config.jit_calc_experiments_tools_dir, config.llvm_tools_dir]
 tools = [
     "jit-calc-opt",
     "mlir-opt",
-    "mlir-cpu-runner",
+    "mlir-runner",
 ]
 llvm_config.add_tool_substitutions(tools, tool_dirs)

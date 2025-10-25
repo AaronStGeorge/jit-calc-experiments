@@ -4,6 +4,7 @@
 
 #include <cassert>
 #include <cstdint>
+#include <cstdlib>
 
 extern "C" void tick_shim(TowerRuntimeContext *, void *, void *);
 

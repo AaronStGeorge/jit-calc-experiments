@@ -21,11 +21,6 @@ Brew has the other stuff we need as well.
 ```sh
 $ brew install llvm cmake ninja pkg-config raylib
 ```
-Homebrew doesn’t add `clang` to its standard path (IDK why).
-So, outside of regular homebrew setup, you'll want to add this to your `.bashrc` or `.zshrc`.
-```sh
-export PATH="/opt/homebrew/opt/llvm/bin:$PATH"
-```
 
 #### A python virtual environment with the MLIRy stuff installed
 
@@ -58,6 +53,10 @@ See MLIR python bindings virtual environment setup [docs](https://mlir.llvm.org/
 # variables (spelled -DVARIABLE=VALUE in CMake) to turn on some non-standard build
 # features. Here’s an overview of the variables we’re setting:
 #
+#   CMAKE_CXX_COMPILER=$(which clang)  - Mac tends to have linking issues when running with
+#                                        another clang. The simplest thing to do is just
+#                                        use system clang. Macs libc++ is new enough for
+#                                        everything we're using.
 #   LLVM_ENABLE_PROJECTS="mlir"        - MLIR project must be enabled.
 #   LLVM_INSTALL_UTILS=ON              - Install utilities, like lit, needed for
 #                                        testing jit-calc.
@@ -123,6 +122,11 @@ If `$LLVM_BUILD_DIR` isn't set or is set incorrectly, the build won't fail immed
 # The jit-calc-experiments CMake build piggybacks on LLVM’s, so the build system generation
 # process is similar, but there are a few extra variables you need to define:
 #
+#   JIT_CALC_EXPERIMENTS_WASM_CLANG=/long/path/clang  - Path to a clang compiler supporting
+#                                                       --target=wasm32. This should be the
+#                                                       clang we installed earlier via
+#                                                       'brew install llvm', typically at
+#                                                       /opt/homebrew/opt/llvm/bin/clang.
 #   MLIR_DIR=$LLVM_BUILD_DIR/lib/cmake/mlir           - The `jit-calc-experiments` build
 #                                                       needs to know where the LLVM build
 #                                                       is.
@@ -139,6 +143,7 @@ If `$LLVM_BUILD_DIR` isn't set or is set incorrectly, the build won't fail immed
     -DCMAKE_C_COMPILER=$(which clang) \
     -DCMAKE_CXX_COMPILER=$(which clang++) \
     -DPython3_EXECUTABLE=$(which python) \
+    -DJIT_CALC_EXPERIMENTS_WASM_CLANG=/opt/homebrew/opt/llvm/bin/clang \
     -DLLVM_USE_LINKER=lld \
     -DMLIR_ENABLE_BINDINGS_PYTHON=ON \
     -DLLVM_USE_SPLIT_DWARF=ON \

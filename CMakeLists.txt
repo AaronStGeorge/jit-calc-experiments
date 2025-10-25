@@ -9,6 +9,20 @@ set(CMAKE_C_STANDARD 11 CACHE STRING "C standard to conform to")
 find_package(MLIR REQUIRED CONFIG)
 find_package(raylib 3.0 REQUIRED)
 
+# Path to a clang compiler capable of targeting WebAssembly
+# Set via: -DJIT_CALC_EXPERIMENTS_WASM_CLANG=/path/to/clang
+if (NOT JIT_CALC_EXPERIMENTS_WASM_CLANG)
+	message(FATAL_ERROR
+		"Please set -DJIT_CALC_EXPERIMENTS_WASM_CLANG, "
+		"jit-calc-experiments needs a clang capable of compiling to WASM")
+endif()
+
+# Create an imported target for the WASM-capable clang compiler
+# Using a different name from the variable to avoid confusion
+message(STATUS "using ${JIT_CALC_EXPERIMENTS_WASM_CLANG} to compile C to WASM")
+add_executable(WASM_CLANG IMPORTED GLOBAL)
+set_target_properties(WASM_CLANG PROPERTIES IMPORTED_LOCATION "${JIT_CALC_EXPERIMENTS_WASM_CLANG}")
+
 message(STATUS "Using MLIRConfig.cmake in: ${MLIR_DIR}")
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 message(STATUS "Using raylib-config.cmake in: ${raylib_DIR}")

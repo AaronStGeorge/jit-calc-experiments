@@ -13,7 +13,7 @@ function(c_to_wasm INPUT_C_FILE OUT_OUTPUT)
     add_custom_command(
             OUTPUT ${OUTPUT}
 
-            COMMAND ${CMAKE_C_COMPILER}
+            COMMAND $<TARGET_FILE:WASM_CLANG>
             -O1
             --target=wasm32
             --no-standard-libraries
@@ -25,6 +25,7 @@ function(c_to_wasm INPUT_C_FILE OUT_OUTPUT)
 
             DEPENDS
             ${CMAKE_CURRENT_SOURCE_DIR}/${INPUT_C_FILE}
+            WASM_CLANG
 
             WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 
@@ -133,12 +134,14 @@ function(compile_player_code INPUT_C_FILE OUT_OBJECT_FILE PREFIX)
 endfunction()
 
 macro(add_player_code_library LIBRARY_NAME INPUT_C_FILE)
-    set(options)
-    set(oneValueArgs PREFIX)
-    set(multiValueArgs)
-
     # Parse arguments after LIBRARY_NAME and INPUT_C_FILE
-    cmake_parse_arguments(ARG "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+    cmake_parse_arguments(
+        ARG         # prefix
+        ""          # options
+        "PREFIX"    # one value keywords
+        ""          # multi-value keywords
+        ${ARGN}
+    )
 
     compile_player_code(${INPUT_C_FILE} OBJECT_FILE "${ARG_PREFIX}")
     add_library(${LIBRARY_NAME} INTERFACE)
