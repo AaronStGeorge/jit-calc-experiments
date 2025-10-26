@@ -82,7 +82,7 @@ See MLIR python bindings virtual environment setup [docs](https://mlir.llvm.org/
 #                                        main binary reduces the amount of data the linker
 #                                        must handle, significantly shortening link times.
 #   CMAKE_EXPORT_COMPILE_COMMANDS=1    - This creates whatever clangd needs to do it's jump
-#                                        to definition magic. If you're not using clnagd you
+#                                        to definition magic. If you're not using clangd you
 #                                        don't need this.
 (mlirdev) $ cmake -G Ninja ../llvm \
     -DCMAKE_C_COMPILER=$(which clang) \
@@ -164,7 +164,7 @@ You can source [`source_me_for_python_bindings.sh`](https://github.com/AaronStGe
 ```sh
 (mlirdev) $ source source_me_for_python_bindings.sh
 ```
-This script modifies your `$PATH` to include `jit-calc-experiements` build directory and sets `$PYTHONPATH` for the MLIR python bindings.
+This script modifies your `$PATH` to include `jit-calc-experiments` build directory and sets `$PYTHONPATH` for the MLIR python bindings.
 Then you can run `slow-roll-fibonacci-2`.
 ```sh
 (mlirdev) $ python python/wasm_to_mlir.py \
