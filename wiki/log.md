@@ -41,3 +41,7 @@ Verified the Python Fibonacci pipeline and individual lit command against `build
 ## [2026-11-21] verify | Audit removal of standalone LLVM
 
 Repaired the local LLVM submodule's dangling Git alternate, reran the vendored smoke checks without the removed checkout, and started a clean build. Recorded the remaining legacy cache and shell references in the [verification record](sources/llvm-build-verification.md#standalone-llvm-removal-audit--observed-locally).
+
+## [2026-11-21] verify | Complete the standalone LLVM removal check
+
+The from-scratch build in `build/standalone-free` completed all 4,527 Ninja steps, and `check-jit-calc-experiments` passed all five tests (exit status `0`). Recorded the result and log paths in the [verification record](sources/llvm-build-verification.md#standalone-llvm-removal-audit--observed-locally).
