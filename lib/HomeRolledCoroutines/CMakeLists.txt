@@ -1,4 +1,7 @@
-add_library(HomeRolledCoroutines ${JIT_CALC_CONTEXT_ASM})
+add_library(HomeRolledCoroutines STATIC ${JIT_CALC_CONTEXT_ASM})
+# Use CMake's C archive rule to recreate the archive when its members change.
+# The ASM archive rule can retain obsolete objects on macOS (e.g. after rebasing).
+set_target_properties(HomeRolledCoroutines PROPERTIES LINKER_LANGUAGE C)
 target_include_directories(HomeRolledCoroutines PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/../../include")
 
 add_executable(HomeRolledCoroutinesTest EXCLUDE_FROM_ALL coroutine_test.c)

@@ -18,7 +18,7 @@ set(JIT_CALC_EXPERIMENTS_TEST_DEPENDS
         FileCheck count not jit-calc-opt mlir-opt mlir-runner
         )
 
-list(APPEND JIT_CALC_EXPERIMENTS_TEST_DEPENDS JitCalcUnitTests)
+list(APPEND JIT_CALC_EXPERIMENTS_TEST_DEPENDS JitCalcUnitTests check-home-rolled-coroutines)
 
 add_lit_testsuite(check-jit-calc-experiments "Running the jit-calc-experiments regression tests"
         ${CMAKE_CURRENT_BINARY_DIR}
