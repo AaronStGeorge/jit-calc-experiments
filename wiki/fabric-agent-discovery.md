@@ -4,7 +4,28 @@
 
 Call the Fabric `discover_agents` tool with an empty JSON object (`{}`). Omit `agent`, `owner`, and `name`; `*` is a literal filter, not a wildcard. The result lists online agents visible to your Fabric connection, not agents across every account.
 
-A direct call to the installed MCP server with `{}` returned `test-with-same-owner-1`, `test-with-same-owner-2`, and `test-with-same-owner-3`, all under `pi.ralph5`. No kind or owner filters were sent. The CLI equivalent, `npx @synadia-ai/agent-fabric agents`, returned the same three using this session's NATS configuration. The CLI takes `NATS_URL` and `NATS_CREDS`; `fabric list` instead lists locally configured agents.
+A direct call to the installed MCP server with `{}` returned three verified `pi.ralph5` agents in our test. That's historical output: use a live listing to see who's available now.
+
+### If your tool interface won't send `{}`
+
+Some tool interfaces require filters even though the MCP server accepts `{}`. Don't substitute an exact-name lookup and count it as a listing. Use the Fabric SDK CLI instead (requires Node.js and `npx`):
+
+- If `NATS_URL` and `NATS_CREDS` are already set for the intended account, run `npx --yes @synadia-ai/agent-fabric agents`. `NATS_CREDS` is a path to a credentials file, not the file contents.
+- If you're in a Fabric-managed session with `NATS_CONTEXT` and `NATS_CONFIG_HOME` set, the CLI doesn't read that context itself. This command reads the URL and credentials path from the active context and passes them to the CLI without printing them or changing your parent shell:
+
+  ```sh
+  (
+    set -eu
+    context="${NATS_CONFIG_HOME:?missing NATS_CONFIG_HOME}/context/${NATS_CONTEXT:?missing NATS_CONTEXT}.json"
+    export NATS_URL="$(node -p 'require(process.argv[1]).url' "$context")"
+    export NATS_CREDS="$(node -p 'require(process.argv[1]).creds' "$context")"
+    npx --yes @synadia-ai/agent-fabric agents
+  )
+  ```
+
+- If you don't have an authorized connection configured, use the Fabric console's **Callers** page to create a caller (or ask your account admin). Download the caller's credentials file, then set `NATS_CREDS` to its local path and `NATS_URL` to the server URL shown by the console before running the command. Don't paste credentials into chat.
+
+`fabric list` is not a fallback: it lists agents configured on the local machine, not agents online.
 
 ## Message exactly one agent
 
