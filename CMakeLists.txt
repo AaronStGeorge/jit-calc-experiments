@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.25)
 project(jit-calc-experiments LANGUAGES CXX C ASM)
 
+include(cmake/JitCalcArch.cmake)
+
 set(CMAKE_BUILD_WITH_INSTALL_NAME_DIR ON)
 
 set(CMAKE_CXX_STANDARD 20 CACHE STRING "C++ standard to conform to")
