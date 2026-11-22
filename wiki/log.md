@@ -17,3 +17,27 @@ Verified that `discover_agents` with `{}` on the installed MCP server and `npx @
 Agent 1 confirmed that the guide worked for messaging a single agent. Its tool interface didn't submit `{}`, and the CLI failed because the required environment variables weren't set. Added a CLI recipe for an active Fabric-managed NATS context and instructions for obtaining authorized caller credentials when no context is available.
 
 Agent 3 independently ran the new fallback as written, listed all three agents, and got a reply from agent 1. Its tool interface also couldn't submit `{}`. Clarified that the CLI prints the server URL and that an exact lookup after CLI listing supplies the target's signing requirement and instance count.
+
+## [2026-11-21] verify | Pin LLVM and build on Apple Silicon
+
+Added the [LLVM build guide](llvm-build.md) and [verification record](sources/llvm-build-verification.md). Verified the exact LLVM revision, fixed a mixed-SDK CMake cache, and passed the default build and all five tests on macOS ARM64. The Linux x86 worker started an LLVM build at the same revision and reproduced the existing AArch64 assembly blocker; Linux build and test results are pending.
+
+## [2026-11-21] ingest | Vendor LLVM and raylib
+
+Updated the [LLVM build guide](llvm-build.md) with the pinned submodules and IREE-style in-tree CMake setup. Recorded the upstream IREE snapshot, successful Ninja graph generation and vendored smoke build, and pending full-build verification in the [verification record](sources/llvm-build-verification.md).
+
+## [2026-11-21] verify | Keep the LLVM sub-build minimal
+
+Removed Clang, LLD, and the WebAssembly backend from the vendored LLVM build. Verified that the Ninja plan excludes Clang and LLD and that the separately supplied Clang produces a WebAssembly fixture. Restarted the macOS build with MLIR and the host backend only.
+
+## [2026-11-21] verify | Pass the minimal vendored build on Apple Silicon
+
+The incremental Release build completed in `build/vendored`, and `check-jit-calc-experiments` passed all five tests without building Clang or LLD from source. Recorded the result in the [build guide](llvm-build.md) and the supporting logs in the [verification record](sources/llvm-build-verification.md).
+
+## [2026-11-21] verify | Run README smoke checks
+
+Verified the Python Fibonacci pipeline and individual lit command against `build/vendored`, fixed their setup instructions, and documented the LLVM Wasm importer's Fibonacci fixture limitation. Recorded [observed results](sources/llvm-build-verification.md#readme-smoke-checks--observed-locally), including the CLI and GUI startup checks.
+
+## [2026-11-21] verify | Audit removal of standalone LLVM
+
+Repaired the local LLVM submodule's dangling Git alternate, reran the vendored smoke checks without the removed checkout, and started a clean build. Recorded the remaining legacy cache and shell references in the [verification record](sources/llvm-build-verification.md#standalone-llvm-removal-audit--observed-locally).

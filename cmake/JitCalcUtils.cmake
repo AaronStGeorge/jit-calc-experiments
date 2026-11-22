@@ -30,6 +30,7 @@ function(c_to_wasm INPUT_C_FILE OUT_OUTPUT)
             WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 
             COMMENT "Building WebAssembly module ${REL_OUTPUT}"
+            VERBATIM
     )
 
     # https://stackoverflow.com/a/29894437

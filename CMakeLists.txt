@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.20.0)
+cmake_minimum_required(VERSION 3.25)
 project(jit-calc-experiments LANGUAGES CXX C ASM)
 
 set(CMAKE_BUILD_WITH_INSTALL_NAME_DIR ON)
@@ -6,26 +6,23 @@ set(CMAKE_BUILD_WITH_INSTALL_NAME_DIR ON)
 set(CMAKE_CXX_STANDARD 20 CACHE STRING "C++ standard to conform to")
 set(CMAKE_C_STANDARD 11 CACHE STRING "C standard to conform to")
 
-find_package(MLIR REQUIRED CONFIG)
-find_package(raylib 3.0 REQUIRED)
-
-# Path to a clang compiler capable of targeting WebAssembly
-# Set via: -DJIT_CALC_EXPERIMENTS_WASM_CLANG=/path/to/clang
-if (NOT JIT_CALC_EXPERIMENTS_WASM_CLANG)
-	message(FATAL_ERROR
-		"Please set -DJIT_CALC_EXPERIMENTS_WASM_CLANG, "
-		"jit-calc-experiments needs a clang capable of compiling to WASM")
+# MLIR uses FindPython3 and FindPython; keep nanobind on the same interpreter.
+if(Python3_EXECUTABLE AND NOT Python_EXECUTABLE)
+  set(Python_EXECUTABLE "${Python3_EXECUTABLE}")
 endif()
 
-# Create an imported target for the WASM-capable clang compiler
-# Using a different name from the variable to avoid confusion
-message(STATUS "using ${JIT_CALC_EXPERIMENTS_WASM_CLANG} to compile C to WASM")
-add_executable(WASM_CLANG IMPORTED GLOBAL)
+set(JIT_CALC_EXPERIMENTS_WASM_CLANG "" CACHE FILEPATH
+    "Path to a prebuilt clang with WebAssembly support")
+if(NOT EXISTS "${JIT_CALC_EXPERIMENTS_WASM_CLANG}")
+  message(FATAL_ERROR "Set JIT_CALC_EXPERIMENTS_WASM_CLANG to a prebuilt clang with WebAssembly and wasm-ld support. See README.md.")
+endif()
+add_executable(WASM_CLANG IMPORTED)
 set_target_properties(WASM_CLANG PROPERTIES IMPORTED_LOCATION "${JIT_CALC_EXPERIMENTS_WASM_CLANG}")
 
-message(STATUS "Using MLIRConfig.cmake in: ${MLIR_DIR}")
-message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
-message(STATUS "Using raylib-config.cmake in: ${raylib_DIR}")
+include(cmake/JitCalcDependencies.cmake)
+
+jit_calc_add_bundled_llvm()
+jit_calc_add_bundled_raylib()
 
 set(LLVM_RUNTIME_OUTPUT_INTDIR ${CMAKE_BINARY_DIR}/bin)
 set(LLVM_LIBRARY_OUTPUT_INTDIR ${CMAKE_BINARY_DIR}/lib)
@@ -34,10 +31,17 @@ set(MLIR_BINARY_DIR ${CMAKE_BINARY_DIR})
 list(APPEND CMAKE_MODULE_PATH "${MLIR_CMAKE_DIR}")
 list(APPEND CMAKE_MODULE_PATH "${LLVM_CMAKE_DIR}")
 
+include(LLVM-Config)
 include(TableGen)
 include(AddLLVM)
 include(AddMLIR)
 include(HandleLLVMOptions)
+# HandleLLVMOptions runs in both directories and appends the same Ninja pools.
+get_property(jit_calc_job_pools GLOBAL PROPERTY JOB_POOLS)
+if(jit_calc_job_pools)
+  list(REMOVE_DUPLICATES jit_calc_job_pools)
+  set_property(GLOBAL PROPERTY JOB_POOLS "${jit_calc_job_pools}")
+endif()
 include(MLIRDetectPythonEnv)
 include(cmake/JitCalcUtils.cmake)
 
@@ -48,7 +52,6 @@ include_directories(${LLVM_INCLUDE_DIRS})
 include_directories(${MLIR_INCLUDE_DIRS})
 include_directories(${PROJECT_SOURCE_DIR}/include)
 include_directories(${PROJECT_BINARY_DIR}/include)
-link_directories(${LLVM_BUILD_LIBRARY_DIR})
 add_definitions(${LLVM_DEFINITIONS})
 
 add_subdirectory(include)
