@@ -15,3 +15,5 @@ Verified that `discover_agents` with `{}` on the installed MCP server and `npx @
 ## [2026-11-21] lint | Add a context-aware discovery fallback
 
 Agent 1 confirmed that the guide worked for messaging a single agent. Its tool interface didn't submit `{}`, and the CLI failed because the required environment variables weren't set. Added a CLI recipe for an active Fabric-managed NATS context and instructions for obtaining authorized caller credentials when no context is available.
+
+Agent 3 independently ran the new fallback as written, listed all three agents, and got a reply from agent 1. Its tool interface also couldn't submit `{}`. Clarified that the CLI prints the server URL and that an exact lookup after CLI listing supplies the target's signing requirement and instance count.

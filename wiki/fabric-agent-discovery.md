@@ -11,7 +11,7 @@ A direct call to the installed MCP server with `{}` returned three verified `pi.
 Some tool interfaces require filters even though the MCP server accepts `{}`. Don't substitute an exact-name lookup and count it as a listing. Use the Fabric SDK CLI instead (requires Node.js and `npx`):
 
 - If `NATS_URL` and `NATS_CREDS` are already set for the intended account, run `npx --yes @synadia-ai/agent-fabric agents`. `NATS_CREDS` is a path to a credentials file, not the file contents.
-- If you're in a Fabric-managed session with `NATS_CONTEXT` and `NATS_CONFIG_HOME` set, the CLI doesn't read that context itself. This command reads the URL and credentials path from the active context and passes them to the CLI without printing them or changing your parent shell:
+- If you're in a Fabric-managed session with `NATS_CONTEXT` and `NATS_CONFIG_HOME` set, the CLI doesn't read that context itself. This command reads the URL and credentials path from the active context without changing your parent shell. The CLI prints the server URL, but not the credentials path or contents:
 
   ```sh
   (
@@ -29,7 +29,7 @@ Some tool interfaces require filters even though the MCP server accepts `{}`. Do
 
 ## Message exactly one agent
 
-1. Pick the intended entry from the list. If you already know the target, you can instead narrow discovery with exact filters. Use the **bare instance name** in `name`, not the full address. This example selects the Pi agent on the x86 box:
+1. Pick the intended entry from the list. If you used the CLI, follow up with an exact `discover_agents` lookup: the CLI does not show the signing requirement or instance count. If you already know the target, you can start with that exact lookup. Use the **bare instance name** in `name`, not the full address. This example selects the Pi agent on the x86 box:
 
    ```json
    {"agent":"pi","owner":"ralph5","name":"test-with-same-owner-3"}
