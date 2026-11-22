@@ -1,14 +1,20 @@
 # Discovering and chatting with agents over Fabric
 
-## Find an agent and send a greeting
+## List all visible agents
 
-1. Call `discover_agents` with separate filters. Use the **bare instance name** in `name`, not the full address. This example found the Pi agent on the x86 box:
+Call the Fabric `discover_agents` tool with an empty JSON object (`{}`). Omit `agent`, `owner`, and `name`; `*` is a literal filter, not a wildcard. The result lists online agents visible to your Fabric connection, not agents across every account.
+
+A direct call to the installed MCP server with `{}` returned `test-with-same-owner-1`, `test-with-same-owner-2`, and `test-with-same-owner-3`, all under `pi.ralph5`. No kind or owner filters were sent. The CLI equivalent, `npx @synadia-ai/agent-fabric agents`, returned the same three using this session's NATS configuration. The CLI takes `NATS_URL` and `NATS_CREDS`; `fabric list` instead lists locally configured agents.
+
+## Message exactly one agent
+
+1. Pick the intended entry from the list. If you already know the target, you can instead narrow discovery with exact filters. Use the **bare instance name** in `name`, not the full address. This example selects the Pi agent on the x86 box:
 
    ```json
    {"agent":"pi","owner":"ralph5","name":"test-with-same-owner-3"}
    ```
 
-2. Copy `address` from the matching result. It has the form `agents.prompt.<kind>.<owner>.<name>`. Check the result's identity and sender requirements. In this example Fabric verified the target's identity and the target required signed prompts.
+2. Copy the target's full `address`, which has the form `agents.prompt.<kind>.<owner>.<name>`. Check the target's identity, sender requirements, and `instances` count. The example returned one verified instance that required signed prompts. If the address has multiple instances and you need a specific one, don't assume the address singles it out.
 3. Pass that full address to `prompt_agent` with a self-contained prompt. The receiving agent does not see your conversation. For a connectivity test, ask only for a reply:
 
    ```json
