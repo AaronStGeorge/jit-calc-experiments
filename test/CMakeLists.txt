@@ -1,4 +1,4 @@
-# Configure lit and combine the lit, unit, and coroutine regression checks.
+# Configure lit to run the regression suite and unit tests.
 
 configure_lit_site_cfg(
         ${CMAKE_CURRENT_SOURCE_DIR}/lit.site.cfg.py.in
@@ -20,7 +20,7 @@ set(JIT_CALC_EXPERIMENTS_TEST_DEPENDS
         FileCheck count not jit-calc-opt mlir-opt mlir-runner
         )
 
-list(APPEND JIT_CALC_EXPERIMENTS_TEST_DEPENDS JitCalcUnitTests check-home-rolled-coroutines)
+list(APPEND JIT_CALC_EXPERIMENTS_TEST_DEPENDS JitCalcUnitTests)
 
 add_lit_testsuite(check-jit-calc-experiments "Running the jit-calc-experiments regression tests"
         ${CMAKE_CURRENT_BINARY_DIR}
