@@ -1,18 +1,12 @@
-// SysV x86_64 context switching for TowerRuntime on macOS and Linux.
+// SysV x86_64 context switching for TowerRuntime on Linux.
 // Offsets follow MachineState and TowerRuntimeContext in TowerRuntime.h.
 
-#if !defined(__x86_64__) || defined(__ILP32__)
-#error Expected an x86_64 compiler target
-#endif
-
-#ifdef __APPLE__
-#define CNAME(name) _##name
-#else
-#define CNAME(name) name
+#if !defined(__linux__) || !defined(__x86_64__) || defined(__ILP32__)
+#error Expected a Linux x86_64 compiler target
 #endif
 
 .text
-.globl CNAME(swap), CNAME(start), CNAME(stop)
+.globl swap, start, stop
 .p2align 4
 
 // Save the caller's stack pointer and the return address separately.
@@ -49,7 +43,7 @@
 
 // Save the "from" context and resume the "to" context, returning false
 // to the resumed context to report a yield.
-CNAME(swap):
+swap:
 	SAVE %rdi
 	RESTORE %rsi
 	xorl %eax, %eax
@@ -58,7 +52,7 @@ CNAME(swap):
 
 // Switch from main into a fresh coroutine whose stack and entry point
 // have already been initialized by the caller.
-CNAME(start):
+start:
 	// Load the main (from) and thread (to) contexts from TowerRuntimeContext.
 	// Pass rdi/rsi/rdx/rcx unchanged, and inherit the caller's FP environment.
 	movq 0(%rdi), %r9
@@ -71,13 +65,11 @@ CNAME(start):
 
 // Switch back to main without saving the finished coroutine. Return true
 // to the resumed main context to report completion.
-CNAME(stop):
+stop:
 	movq 0(%rdi), %r9
 	RESTORE %r9
 	movl $1, %eax
 	pushq %r11
 	retq
 
-#ifdef __ELF__
 .section .note.GNU-stack,"",@progbits
-#endif

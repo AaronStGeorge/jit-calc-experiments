@@ -57,3 +57,7 @@ Recorded the [architecture options and cross-platform results](llvm-build.md#cor
 ## [2026-11-25] update | Select coroutine assembly automatically
 
 Removed the redundant `JIT_CALC_ARCH` config option. CMake selects the assembly from its target architecture.
+
+## [2026-11-25] update | Make x86_64 coroutine backends Linux-only
+
+Removed the Mach-O symbol handling from both x86_64 backends. CMake rejects x86_64 macOS targets; macOS builds use ARM64.
