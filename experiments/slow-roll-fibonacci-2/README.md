@@ -2,10 +2,13 @@
 
 ## Running
 
-You'll need everything built, and you'll need to source [`source_me_to_setup_slow-roll-fibonacci-2_experiment.sh`](https://github.com/AaronStGeorge/jit-calc-experiments/blob/eb01f6996c6c13cb7d303c2893d5192308766cc6/source_me_to_setup_slow-roll-fibonacci-2_experiment.sh).
+Build the project and activate its Python environment as described in the
+[top-level README](../../README.md#running-wasm_to_mlirpy). Run this from the
+repository root:
 
 ```shell
-$ python python/wasm_to_mlir.py experiments/slow-roll-fibonacci-2/fixtures/fib.wasm \
+source source_me_for_python_bindings.sh
+python python/wasm_to_mlir.py experiments/slow-roll-fibonacci-2/fixtures/fib.wasm \
 	| jit-calc-opt --shim-function='function-to-shim=fib' --convert-tower-runtime-to-llvm \
 	| srf2-driver
 ```
@@ -18,7 +21,7 @@ problems discussed in [`count-to-n`](../count-to-n).
 
 ## How
 
-The strategy hasn't changed from [`slow-roll-fibonacci-1`](../slow-roll-fibonacci-1#how-(strategy)), but the [tactics](../slow-roll-fibonacci-1#how-(tatctics)) have.
+The strategy hasn't changed from [`slow-roll-fibonacci-1`](../slow-roll-fibonacci-1#how-strategy), but the [tactics](../slow-roll-fibonacci-1#how-tactics) have.
 `slow-roll-fibonacci-2` uses a custom compiler to generate calls to a cooperative multitasking library.
 We no longer swap in and out of user programs at random points when a timer pings.
 `slow-roll-fibonacci-2`'s custom compiler interleaves "runtime control" instructions [`increment_count`](https://github.com/AaronStGeorge/jit-calc-experiments/blob/b9579f6c6e32408bff9ff280a0f54e1ac9741025/include/jit-calc-mlir/Dialect/TowerRuntime/IR/TowerRuntimeOps.td#L38-L50) and [`check_swap`](https://github.com/AaronStGeorge/jit-calc-experiments/blob/b9579f6c6e32408bff9ff280a0f54e1ac9741025/include/jit-calc-mlir/Dialect/TowerRuntime/IR/TowerRuntimeOps.td#L22-L36) around user instructions.

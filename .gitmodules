@@ -1,0 +1,6 @@
+[submodule "third_party/llvm-project"]
+	path = third_party/llvm-project
+	url = https://github.com/AaronStGeorge/llvm-project.git
+[submodule "third_party/raylib"]
+	path = third_party/raylib
+	url = https://github.com/raysan5/raylib.git

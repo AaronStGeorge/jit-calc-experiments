@@ -15,7 +15,7 @@ configure_lit_site_cfg(
         )
 
 set(JIT_CALC_EXPERIMENTS_TEST_DEPENDS
-        FileCheck count not
+        FileCheck count not jit-calc-opt mlir-opt mlir-runner
         )
 
 list(APPEND JIT_CALC_EXPERIMENTS_TEST_DEPENDS JitCalcUnitTests)
