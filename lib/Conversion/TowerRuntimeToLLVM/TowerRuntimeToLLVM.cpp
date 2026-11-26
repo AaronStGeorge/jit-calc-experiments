@@ -203,9 +203,9 @@ struct ToRuntimeCall : public OpConversionPattern<OpTy> {
     // promote tower runtime context to stack
     LLVMTypeConverter llvmTypeConverter(rewriter.getContext());
     auto ptrTy = LLVM::LLVMPointerType::get(rewriter.getContext());
+    Type indexTy = llvmTypeConverter.convertType(rewriter.getIndexType());
     Value one = rewriter.create<LLVM::ConstantOp>(
-        op.getLoc(), llvmTypeConverter.convertType(rewriter.getIndexType()),
-        rewriter.getIntegerAttr(rewriter.getIndexType(), 1));
+        op.getLoc(), indexTy, rewriter.getIntegerAttr(indexTy, 1));
     Value allocated = rewriter.create<LLVM::AllocaOp>(
         op.getLoc(), ptrTy, getTowerRuntimeContextType(rewriter.getContext()),
         one, /*alignment=*/0);
@@ -293,9 +293,31 @@ struct TowerRuntimeToLLVMConversionPass
     target.addLegalDialect<memref::MemRefDialect>();
     target.addLegalOp<func::ReturnOp>();
 
-    // Ensure function signatures and all call ops are converted
-    populateFunctionOpInterfaceTypeConversionPattern<func::FuncOp>(
-        patterns, typeConverter);
+    // Convert non-entry CFG block arguments as well as function signatures.
+    // The upstream function-interface pattern converts only the entry block.
+    struct ConvertFunction : OpConversionPattern<func::FuncOp> {
+      using OpConversionPattern::OpConversionPattern;
+
+      LogicalResult
+      matchAndRewrite(func::FuncOp op, OpAdaptor,
+                      ConversionPatternRewriter &rewriter) const override {
+        const TypeConverter &converter = *getTypeConverter();
+        TypeConverter::SignatureConversion signature(op.getNumArguments());
+        SmallVector<Type> results;
+        if (failed(converter.convertSignatureArgs(op.getArgumentTypes(),
+                                                  signature)) ||
+            failed(converter.convertTypes(op.getResultTypes(), results)) ||
+            failed(rewriter.convertRegionTypes(&op.getBody(), converter,
+                                               &signature)))
+          return failure();
+        rewriter.modifyOpInPlace(op, [&] {
+          op.setType(FunctionType::get(op.getContext(),
+                                       signature.getConvertedTypes(), results));
+        });
+        return success();
+      }
+    };
+    patterns.add<ConvertFunction>(typeConverter, context);
     target.addDynamicallyLegalOp<func::FuncOp>([&](func::FuncOp op) {
       return typeConverter.isSignatureLegal(op.getFunctionType()) &&
              typeConverter.isLegal(&op.getBody());

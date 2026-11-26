@@ -65,3 +65,7 @@ Removed the Mach-O symbol handling from both x86_64 backends. CMake rejects x86_
 ## [2026-11-25] update | Build TowerRuntime as one static library
 
 Renamed the static target to `TowerRuntime` and removed the unused shared target and its lit substitution. The demos and integration tests link the static library.
+
+## [2026-11-26] verify | Update LLVM to upstream main snapshot
+
+Pinned LLVM/MLIR to upstream `6e144d9` and removed the LLVM C++17 override. Recorded the [native macOS ARM64 and Linux x86_64 verification](sources/llvm-6e144d9-verification.md) and the Linux module-scanner workaround.

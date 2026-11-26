@@ -71,10 +71,12 @@ endfunction()
 function(mlir_to_llvm INPUT_MLIR_FILE OUT_OUTPUT PREFIX)
     get_filename_component(FILE_NAME ${INPUT_MLIR_FILE} NAME_WE)
     set(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/${FILE_NAME}.ll")
+    set(LOWERED_MLIR "${CMAKE_CURRENT_BINARY_DIR}/${FILE_NAME}.llvm.mlir")
     file(RELATIVE_PATH REL_OUTPUT "${CMAKE_BINARY_DIR}" "${OUTPUT}")
 
     add_custom_command(
             OUTPUT ${OUTPUT}
+            BYPRODUCTS ${LOWERED_MLIR}
 
             COMMAND
             $<TARGET_FILE:jit-calc-opt>
@@ -88,8 +90,10 @@ function(mlir_to_llvm INPUT_MLIR_FILE OUT_OUTPUT PREFIX)
             --convert-arith-to-llvm
             --convert-func-to-llvm
             --reconcile-unrealized-casts
-            | $<TARGET_FILE:mlir-translate>
-            --mlir-to-llvmir
+            -o ${LOWERED_MLIR}
+
+            COMMAND $<TARGET_FILE:mlir-translate>
+            ${LOWERED_MLIR} --mlir-to-llvmir
             -o ${OUTPUT}
 
             DEPENDS
