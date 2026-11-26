@@ -1,3 +1,7 @@
+# Add the vendored LLVM/MLIR and raylib submodules to jit-calc's CMake build.
+# Check that the submodules are initialized and expose the LLVM/MLIR settings
+# needed by jit-calc without importing a separate LLVM installation.
+
 include_guard(GLOBAL)
 
 function(jit_calc_require_submodule path)
