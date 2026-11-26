@@ -14,7 +14,7 @@ endif()
 set(JIT_CALC_EXPERIMENTS_WASM_CLANG "" CACHE FILEPATH
     "Path to a prebuilt clang with WebAssembly support")
 if(NOT EXISTS "${JIT_CALC_EXPERIMENTS_WASM_CLANG}")
-  message(FATAL_ERROR "Set JIT_CALC_EXPERIMENTS_WASM_CLANG to a prebuilt clang with WebAssembly and wasm-ld support. See README.md.")
+  message(FATAL_ERROR "Set JIT_CALC_EXPERIMENTS_WASM_CLANG to a prebuilt clang with WebAssembly and wasm-ld support.")
 endif()
 add_executable(WASM_CLANG IMPORTED)
 set_target_properties(WASM_CLANG PROPERTIES IMPORTED_LOCATION "${JIT_CALC_EXPERIMENTS_WASM_CLANG}")

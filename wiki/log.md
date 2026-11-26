@@ -20,11 +20,11 @@ Agent 3 independently ran the new fallback as written, listed all three agents, 
 
 ## [2026-11-21] verify | Pin LLVM and build on Apple Silicon
 
-Added the [LLVM build guide](llvm-build.md) and [verification record](sources/llvm-build-verification.md). Verified the exact LLVM revision, fixed a mixed-SDK CMake cache, and passed the default build and all five tests on macOS ARM64. The Linux x86 worker started an LLVM build at the same revision and reproduced the existing AArch64 assembly blocker; Linux build and test results are pending.
+Added the [LLVM build guide](llvm-build.md) and its verification record. Verified the exact LLVM revision, fixed a mixed-SDK CMake cache, and passed the default build and all five tests on macOS ARM64. The Linux x86 worker started an LLVM build at the same revision and reproduced the existing AArch64 assembly blocker; Linux build and test results are pending.
 
 ## [2026-11-21] ingest | Vendor LLVM and raylib
 
-Updated the [LLVM build guide](llvm-build.md) with the pinned submodules and IREE-style in-tree CMake setup. Recorded the upstream IREE snapshot, successful Ninja graph generation and vendored smoke build, and pending full-build verification in the [verification record](sources/llvm-build-verification.md).
+Updated the [LLVM build guide](llvm-build.md) with the pinned submodules and IREE-style in-tree CMake setup. Recorded the upstream IREE snapshot, successful Ninja graph generation and vendored smoke build, and pending full-build verification in the verification record.
 
 ## [2026-11-21] verify | Keep the LLVM sub-build minimal
 
@@ -32,16 +32,20 @@ Removed Clang, LLD, and the WebAssembly backend from the vendored LLVM build. Ve
 
 ## [2026-11-21] verify | Pass the minimal vendored build on Apple Silicon
 
-The incremental Release build completed in `build/vendored`, and `check-jit-calc-experiments` passed all five tests without building Clang or LLD from source. Recorded the result in the [build guide](llvm-build.md) and the supporting logs in the [verification record](sources/llvm-build-verification.md).
+The incremental Release build completed in `build/vendored`, and `check-jit-calc-experiments` passed all five tests without building Clang or LLD from source. Recorded the result in the [build guide](llvm-build.md) and the supporting logs in the verification record.
 
 ## [2026-11-21] verify | Run README smoke checks
 
-Verified the Python Fibonacci pipeline and individual lit command against `build/vendored`, fixed their setup instructions, and documented the LLVM Wasm importer's Fibonacci fixture limitation. Recorded [observed results](sources/llvm-build-verification.md#readme-smoke-checks--observed-locally), including the CLI and GUI startup checks.
+Verified the Python Fibonacci pipeline and individual lit command against `build/vendored`, fixed their setup instructions, and documented the LLVM Wasm importer's Fibonacci fixture limitation. Recorded the observed results, including the CLI and GUI startup checks.
 
 ## [2026-11-21] verify | Audit removal of standalone LLVM
 
-Repaired the local LLVM submodule's dangling Git alternate, reran the vendored smoke checks without the removed checkout, and started a clean build. Recorded the remaining legacy cache and shell references in the [verification record](sources/llvm-build-verification.md#standalone-llvm-removal-audit--observed-locally).
+Repaired the local LLVM submodule's dangling Git alternate, reran the vendored smoke checks without the removed checkout, and started a clean build. Recorded the remaining legacy cache and shell references in the verification record.
 
 ## [2026-11-21] verify | Complete the standalone LLVM removal check
 
-The from-scratch build in `build/standalone-free` completed all 4,527 Ninja steps, and `check-jit-calc-experiments` passed all five tests (exit status `0`). Recorded the result and log paths in the [verification record](sources/llvm-build-verification.md#standalone-llvm-removal-audit--observed-locally).
+The from-scratch build in `build/standalone-free` completed all 4,527 Ninja steps, and `check-jit-calc-experiments` passed all five tests (exit status `0`). Recorded the result and log paths in the verification record.
+
+## [2026-11-25] lint | Remove retired documentation links
+
+Removed the root README and LLVM build verification record, and cleaned up links to them.
