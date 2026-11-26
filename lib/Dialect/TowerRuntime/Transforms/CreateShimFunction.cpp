@@ -119,12 +119,12 @@ public:
     std::string shimFunctionName =
         llvm::formatv("{0}_shim", funcToShim.getSymName());
     auto shimFunc =
-        builder.create<func::FuncOp>(loc, shimFunctionName, shimFuncTy);
+        func::FuncOp::create(builder, loc, shimFunctionName, shimFuncTy);
 
     // 3. create shim function body
     builder.setInsertionPointToStart(shimFunc.addEntryBlock());
     auto ctxLoad =
-        builder.create<towerRuntime::LoadOp>(loc, shimFunc.getArgument(0));
+        towerRuntime::LoadOp::create(builder, loc, shimFunc.getArgument(0));
 
     // 3.a. Read arguments from type erased pointer to inputs struct
     FunctionType toShimFuncTy = funcToShim.getFunctionType();
@@ -141,28 +141,28 @@ public:
           builder.getContext(), nonCtxInputTys);
 
       for (auto [i, inputTy] : llvm::enumerate(nonCtxInputTys)) {
-        auto gepPtr = builder.create<LLVM::GEPOp>(loc, ptrTy, inStructTy,
-                                                  shimFunc.getArgument(1),
-                                                  ArrayRef<LLVM::GEPArg>{0, i});
+        auto gepPtr = LLVM::GEPOp::create(builder, loc, ptrTy, inStructTy,
+                                          shimFunc.getArgument(1),
+                                          ArrayRef<LLVM::GEPArg>{0, i});
         argsForFuncToShim[i + 1] =
-            builder.create<LLVM::LoadOp>(loc, inputTy, gepPtr);
+            LLVM::LoadOp::create(builder, loc, inputTy, gepPtr);
       }
     }
 
     // 3.b. Create the call into generated function we're creating a shim for.
-    auto call = builder.create<func::CallOp>(builder.getUnknownLoc(),
-                                             funcToShim, argsForFuncToShim);
+    auto call = func::CallOp::create(builder, builder.getUnknownLoc(),
+                                     funcToShim, argsForFuncToShim);
 
     // 3.c. Write results to type erased pointer to outputs struct
     LLVM::LLVMStructType outStructTy = LLVM::LLVMStructType::getLiteral(
         builder.getContext(), toShimFuncTy.getResults());
     for (auto [i, result] : llvm::enumerate(call->getResults())) {
-      auto gepPtr = builder.create<LLVM::GEPOp>(loc, ptrTy, outStructTy,
-                                                shimFunc.getArgument(2),
-                                                ArrayRef<LLVM::GEPArg>{0, i});
-      builder.create<LLVM::StoreOp>(loc, result, gepPtr);
+      auto gepPtr = LLVM::GEPOp::create(builder, loc, ptrTy, outStructTy,
+                                        shimFunc.getArgument(2),
+                                        ArrayRef<LLVM::GEPArg>{0, i});
+      LLVM::StoreOp::create(builder, loc, result, gepPtr);
     }
 
-    builder.create<func::ReturnOp>(builder.getUnknownLoc());
+    func::ReturnOp::create(builder, builder.getUnknownLoc());
   };
 };
