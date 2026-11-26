@@ -58,27 +58,17 @@ CNAME(swap):
 
 CNAME(start):
 	// Pass x0-x3 unchanged, and inherit the caller's FP environment.
-#ifdef JIT_CALC_TOWER_RUNTIME
 	// x0 is TowerRuntimeContext *, containing the two MachineState pointers.
 	LDP x9, x10, [x0]
 	SAVE x9
 	RESTORE x10, 1
-#else
-	SAVE x0
-	RESTORE x1, 1
-#endif
 	MOV x9, lr
 	BLR x9
 	BRK #0 // Entry functions must transfer control back with stop.
 
 CNAME(stop):
-#ifdef JIT_CALC_TOWER_RUNTIME
 	LDR x9, [x0] // Restore main; the finished coroutine is discarded.
 	RESTORE x9
-#else
-	SAVE x0
-	RESTORE x1
-#endif
 	MOV x0, 1
 	RET
 

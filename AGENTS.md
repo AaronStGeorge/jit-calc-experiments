@@ -1,3 +1,7 @@
+# Experiment boundaries
+
+Keep experiments separate by default so they can evolve independently. Keep experiment-specific code with its experiment and use separate assembly files for different CPU architectures. Shared code is fine when there is a clear reason to share it, such as common infrastructure.
+
 # Repository wiki
 
 Start at [wiki/index.md](wiki/index.md) for maintained knowledge about this repo and its experiments. See [wiki/log.md](wiki/log.md) for the history of wiki updates.

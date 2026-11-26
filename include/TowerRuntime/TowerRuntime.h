@@ -1,9 +1,27 @@
 #ifndef TOWER_RUNTIME_H
 #define TOWER_RUNTIME_H
 
-#include "CoroutineContext.h"
+#include <stddef.h>
+#include <stdint.h>
 
-using MachineState = context;
+// Keep this layout in sync with tower_runtime_<arch>.S.
+struct MachineState {
+  uint64_t sp;
+#if defined(__aarch64__) || defined(__arm64__)
+  uint64_t lr;
+  uint64_t fp;
+  uint64_t x19, x20, x21, x22, x23, x24, x25, x26, x27, x28;
+  uint64_t d8_to_d15[8];
+  uint64_t fpcr;
+#elif defined(__x86_64__) && !defined(__ILP32__)
+  uint64_t ip;
+  uint64_t rbp, rbx, r12, r13, r14, r15;
+  uint32_t mxcsr;
+  uint16_t x87_control;
+#else
+#error Unsupported TowerRuntime target ABI
+#endif
+};
 
 // `TowerRuntimeContext` must be ABI compatible with the MLIR type
 // `!tower_runtime.ctx`. MLIR assumes `!tower_runtime.ctx` is laid out as a blob
@@ -62,6 +80,9 @@ extern "C" {
 bool start(TowerRuntimeContext *ctx,
            void (*entry)(TowerRuntimeContext *, void *, void *), void *in,
            void *out);
+
+// Resume a suspended context. Returns false on yield and true on stop.
+bool swap(MachineState *from, MachineState *to);
 
 // Intended to be called from the launchpad function, let's the main know thread
 // is done.

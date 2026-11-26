@@ -1,6 +1,5 @@
 add_subdirectory(CAPI)
 add_subdirectory(Conversion)
 add_subdirectory(Dialect)
-set(JIT_CALC_CONTEXT_ASM "${CMAKE_CURRENT_SOURCE_DIR}/CoroutineContext/context_${JIT_CALC_ARCH_SUFFIX}.S")
 add_subdirectory(HomeRolledCoroutines)
 add_subdirectory(TowerRuntime)

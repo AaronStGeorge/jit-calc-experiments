@@ -23,7 +23,11 @@ CPPTowerRuntimeContext::CPPTowerRuntimeContext(
     void (*launchpad)(TowerRuntimeContext *ctx,
                       void (*)(TowerRuntimeContext *, void *, void *), void *,
                       void *))
-    : main{}, ctx{&main, &thread, count, limit} {
-  coroutine_init_context(&thread, stack, stackSize,
-                         reinterpret_cast<uintptr_t>(launchpad));
+    : main{}, thread{}, ctx{&main, &thread, count, limit} {
+  thread.sp = (reinterpret_cast<uintptr_t>(stack) + stackSize) & ~uintptr_t{15};
+#if defined(__aarch64__) || defined(__arm64__)
+  thread.lr = reinterpret_cast<uintptr_t>(launchpad);
+#else
+  thread.ip = reinterpret_cast<uintptr_t>(launchpad);
+#endif
 }

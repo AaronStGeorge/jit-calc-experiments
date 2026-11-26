@@ -53,28 +53,15 @@ CNAME(swap):
 
 CNAME(start):
 	// Pass rdi/rsi/rdx/rcx unchanged, and inherit the caller's FP environment.
-#ifdef JIT_CALC_TOWER_RUNTIME
-	// rdi is TowerRuntimeContext *, containing the two MachineState pointers.
-	movq 0(%rdi), %r9
-	movq 8(%rdi), %r10
-	SAVE %r9
-	RESTORE %r10, 1
-#else
 	SAVE %rdi
 	RESTORE %rsi, 1
-#endif
 	// The fresh stack is 16-byte aligned before call, as required by SysV.
 	callq *%r11
 	ud2 // Entry functions must transfer control back with stop.
 
 CNAME(stop):
-#ifdef JIT_CALC_TOWER_RUNTIME
-	movq 0(%rdi), %r9 // Restore main; the finished coroutine is discarded.
-	RESTORE %r9
-#else
 	SAVE %rdi
 	RESTORE %rsi
-#endif
 	movl $1, %eax
 	pushq %r11
 	retq
