@@ -31,6 +31,10 @@ cmake --build build --target check-jit-calc-experiments --parallel 4
 
 This command is retained for reference when reproducing the pre-vendoring results at that commit. It is not the configure command for the current build.
 
-## Linux x86_64: matching LLVM does not make the full build portable
+## Coroutine builds on ARM64 and x86_64
 
-The Linux worker reported successful project configuration, but confirmed the default build has an architecture blocker: [HomeRolledCoroutines assembly](../lib/HomeRolledCoroutines/home_rolled_coroutines.s) uses AArch64 instructions. The separate [TowerRuntime assembly](../lib/TowerRuntime/tower_runtime.s) may also block the integration tests; the worker had not reached it. The worker queued both build and test retries after LLVM finishes. No Linux build or test pass has been established.
+[HomeRolledCoroutines](../lib/HomeRolledCoroutines/) and [TowerRuntime](../lib/TowerRuntime/) each have separate ARM64 and x86_64 assembly files. The [CMake architecture setting](../cmake/JitCalcArch.cmake) defaults to `JIT_CALC_ARCH=AUTO`. To pin it, set `-DJIT_CALC_ARCH=ARM64` or `-DJIT_CALC_ARCH=X86_64` when configuring. It must match the compiler target; it does not set up cross-compilation. The x86_64 backend does not support CET shadow stacks.
+
+[PR #2](https://github.com/AaronStGeorge/jit-calc-experiments/pull/2) removed the ARM64-only build blocker. Before rebasing, the separate backends passed the vendored default build, `check-jit-calc-experiments` (5/5 lit tests and the standalone coroutine state check), and `count-to-n` (`return_val=9`) on both Apple ARM64 (observed locally) and Linux x86_64 (reported by the Fabric worker). The Linux worker built both GUI demos but could not verify startup on its headless machine.
+
+The vendored LLVM/MLIR sub-build uses C++17 to avoid a libstdc++ 15 build error at the pinned revision; jit-calc itself still uses C++20.

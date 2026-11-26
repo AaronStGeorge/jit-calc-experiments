@@ -49,3 +49,7 @@ The from-scratch build in `build/standalone-free` completed all 4,527 Ninja step
 ## [2026-11-25] lint | Remove retired documentation links
 
 Removed the root README and LLVM build verification record, and cleaned up links to them.
+
+## [2026-11-25] verify | Separate coroutine backends and rebase PR #2
+
+Recorded the [architecture options and cross-platform results](llvm-build.md#coroutine-builds-on-arm64-and-x86_64) for PR #2. Rebased onto `vibesperimentation` without restoring the retired documentation, and recorded the default base branch in `AGENTS.md`.
