@@ -219,8 +219,12 @@ void addRuntimeFunctionPrototypes(
   }
 }
 
-// The upstream function-interface pattern converts only the entry block.
-// TowerRuntime contexts can also flow through non-entry block arguments.
+// At this LLVM revision, populateFunctionOpInterfaceTypeConversionPattern
+// converts the function signature and entry block, but not later blocks.
+// Branches can pass the current !tower_runtime.ctx to a successor block (for
+// example, around a loop). If that block argument keeps the old type, the
+// function is still illegal. Convert the signature and every block's arguments
+// together so entry arguments and branch destinations use the LLVM struct type.
 struct ConvertFunction : OpConversionPattern<func::FuncOp> {
   using OpConversionPattern::OpConversionPattern;
 
