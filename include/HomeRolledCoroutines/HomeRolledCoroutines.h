@@ -1,3 +1,5 @@
+// C API and saved register layout for standalone cooperative coroutines.
+
 #ifndef HOME_ROLLED_COROUTINES_H_
 #define HOME_ROLLED_COROUTINES_H_
 

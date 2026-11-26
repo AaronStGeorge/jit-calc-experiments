@@ -1,3 +1,5 @@
+// Context layouts and entry points used by TowerRuntime and generated MLIR code.
+
 #ifndef TOWER_RUNTIME_H
 #define TOWER_RUNTIME_H
 

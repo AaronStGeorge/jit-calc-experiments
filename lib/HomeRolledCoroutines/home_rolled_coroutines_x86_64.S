@@ -1,3 +1,6 @@
+// SysV x86_64 context switching for HomeRolledCoroutines on macOS and Linux.
+// Register offsets follow struct context in HomeRolledCoroutines.h.
+
 #if !defined(__x86_64__) || defined(__ILP32__)
 #error Expected an x86_64 compiler target
 #endif

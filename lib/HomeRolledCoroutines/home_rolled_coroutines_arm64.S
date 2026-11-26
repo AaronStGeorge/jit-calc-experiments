@@ -1,3 +1,6 @@
+// ARM64 context switching for HomeRolledCoroutines on macOS and Linux.
+// Register offsets follow struct context in HomeRolledCoroutines.h.
+
 #if !defined(__aarch64__) && !defined(__arm64__)
 #error Expected an ARM64 compiler target
 #endif

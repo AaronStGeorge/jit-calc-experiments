@@ -6,6 +6,10 @@ Use `vibesperimentation` as the default base branch for new work, rebases, and p
 
 Keep experiments separate by default so they can evolve independently. Keep experiment-specific code with its experiment and use separate assembly files for different CPU architectures. Shared code is fine when there is a clear reason to share it, such as common infrastructure.
 
+# File-level comments
+
+Most source, test, and build configuration files should start with a brief comment that explains the file's purpose. Note important constraints when they help orient the reader. Omit the comment when the purpose is already obvious, the file is generated, or the format does not support comments.
+
 # Repository wiki
 
 Start at [wiki/index.md](wiki/index.md) for maintained knowledge about this repo and its experiments. See [wiki/log.md](wiki/log.md) for the history of wiki updates.

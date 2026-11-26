@@ -1,3 +1,5 @@
+# Configure the jit-calc experiments, vendored dependencies, and test targets.
+
 cmake_minimum_required(VERSION 3.25)
 project(jit-calc-experiments LANGUAGES CXX C ASM)
 

@@ -1,3 +1,6 @@
+// Check that coroutines can start, yield, resume, and stop without losing
+// their stack data or changing the caller's floating-point rounding mode.
+
 #include "HomeRolledCoroutines/HomeRolledCoroutines.h"
 
 #include <fenv.h>

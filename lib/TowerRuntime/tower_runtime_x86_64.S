@@ -1,3 +1,6 @@
+// SysV x86_64 context switching for TowerRuntime on macOS and Linux.
+// Offsets follow MachineState and TowerRuntimeContext in TowerRuntime.h.
+
 #if !defined(__x86_64__) || defined(__ILP32__)
 #error Expected an x86_64 compiler target
 #endif

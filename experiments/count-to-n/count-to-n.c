@@ -1,3 +1,6 @@
+// Demonstrate HomeRolledCoroutines by yielding between counts and returning
+// the final count to the caller.
+
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>

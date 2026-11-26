@@ -1,3 +1,5 @@
+// Initialize coroutine stacks and bridge from context switching to generated code.
+
 #include "TowerRuntime/TowerRuntime.h"
 
 #include <cstdlib>

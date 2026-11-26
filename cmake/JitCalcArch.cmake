@@ -1,3 +1,5 @@
+# Validate the compiler target and select the filename suffix for coroutine assembly.
+
 set(JIT_CALC_ARCH AUTO CACHE STRING "Target architecture (AUTO, ARM64, or X86_64)")
 set_property(CACHE JIT_CALC_ARCH PROPERTY STRINGS AUTO ARM64 X86_64)
 

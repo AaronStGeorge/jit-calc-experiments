@@ -1,3 +1,6 @@
+// ARM64 context switching for TowerRuntime on macOS and Linux.
+// Offsets follow MachineState and TowerRuntimeContext in TowerRuntime.h.
+
 #if !defined(__aarch64__) && !defined(__arm64__)
 #error Expected an ARM64 compiler target
 #endif
