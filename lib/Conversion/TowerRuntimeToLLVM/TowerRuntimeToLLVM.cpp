@@ -1,9 +1,8 @@
-#include "mlir/Conversion/ConvertToLLVM/ToLLVMInterface.h"
-#include "mlir/Conversion/LLVMCommon/MemRefBuilder.h"
+// Lower TowerRuntime operations and context types to LLVM-compatible MLIR.
+
+#include "mlir/Conversion/LLVMCommon/StructBuilder.h"
 #include "mlir/Conversion/LLVMCommon/TypeConverter.h"
 #include "mlir/Dialect/Arith/IR/Arith.h"
-#include "mlir/Dialect/Bufferization/IR/BufferizableOpInterface.h"
-#include "mlir/Dialect/ControlFlow/IR/ControlFlow.h"
 #include "mlir/Dialect/ControlFlow/IR/ControlFlowOps.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/Dialect/Func/Transforms/FuncConversions.h"
@@ -18,15 +17,13 @@
 #include "mlir/IR/PatternMatch.h"
 #include "mlir/IR/SymbolTable.h"
 #include "mlir/IR/TypeRange.h"
-#include "mlir/IR/TypeUtilities.h"
 #include "mlir/IR/Value.h"
 #include "mlir/IR/ValueRange.h"
 #include "mlir/Pass/Pass.h"
 #include "mlir/Transforms/DialectConversion.h"
 
+#include "llvm/ADT/SmallVector.h"
 #include "llvm/ADT/StringRef.h"
-#include "llvm/Support/Casting.h"
-#include "llvm/Support/Debug.h"
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/FormatVariadic.h"
 
@@ -35,7 +32,7 @@
 #include "jit-calc-mlir/Dialect/TowerRuntime/IR/TowerRuntimeOps.h"
 #include "jit-calc-mlir/Dialect/TowerRuntime/IR/TowerRuntimeTypes.h"
 
-#define DEBUG_TYPE "taco"
+#include <vector>
 
 namespace mlir {
 #define GEN_PASS_DEF_TOWERRUNTIMETOLLVMCONVERSIONPASS
@@ -53,52 +50,37 @@ LLVM::LLVMStructType getTowerRuntimeContextType(MLIRContext *context) {
                                           {ptrTy, ptrTy, i64Ty, i64Ty});
 }
 
-static constexpr unsigned kMainCtxPosInContextStruct = 0;
-static constexpr unsigned kThreadCtxPosInContextStruct = 1;
-static constexpr unsigned kCountPosInContextStruct = 2;
-static constexpr unsigned kLimitPosInContextStruct = 3;
+// Field indices match getTowerRuntimeContextType and the C++ runtime layout.
 class ContextStructBuilder : public StructBuilder {
+  enum Field : unsigned { Main, Thread, Count, Limit };
+
 public:
-  /// Construct a helper for the given complex number value.
   using StructBuilder::StructBuilder;
-  static ContextStructBuilder load(OpBuilder &builder, Location loc,
-                                   Value ptr) {
-    LLVM::LLVMStructType contextTy =
-        getTowerRuntimeContextType(builder.getContext());
-    auto load = builder.create<LLVM::LoadOp>(loc, contextTy, ptr);
-    return ContextStructBuilder(load.getResult());
-  }
 
   Value mainCtx(OpBuilder &builder, Location loc) {
-    return extractPtr(builder, loc, kMainCtxPosInContextStruct);
+    return extractPtr(builder, loc, Main);
   }
   Value threadCtx(OpBuilder &builder, Location loc) {
-    return extractPtr(builder, loc, kThreadCtxPosInContextStruct);
+    return extractPtr(builder, loc, Thread);
   }
   Value count(OpBuilder &builder, Location loc) {
-    return extractPtr(builder, loc, kCountPosInContextStruct);
+    return extractPtr(builder, loc, Count);
   }
-  void setCount(OpBuilder &builder, Location loc, Value real) {
-    setPtr(builder, loc, kCountPosInContextStruct, real);
+  void setCount(OpBuilder &builder, Location loc, Value count) {
+    setPtr(builder, loc, Count, count);
   }
   Value limit(OpBuilder &builder, Location loc) {
-    return extractPtr(builder, loc, kLimitPosInContextStruct);
-  }
-  void setLimit(OpBuilder &builder, Location loc, Value real) {
-    setPtr(builder, loc, kLimitPosInContextStruct, real);
+    return extractPtr(builder, loc, Limit);
   }
 };
 
-func::FuncOp lookupRuntimeFunction(SymbolTable symbolTable,
+func::FuncOp lookupRuntimeFunction(const SymbolTable &symbolTable,
                                    StringRef calleeName) {
-  auto callee = symbolTable.lookup(calleeName);
-  if (!callee || !isa<func::FuncOp>(callee)) {
-    llvm_unreachable(
-        llvm::formatv("couldn't find runtime function named {0}", calleeName)
-            .str()
-            .c_str());
-  }
-  return cast<func::FuncOp>(callee);
+  auto callee = symbolTable.lookup<func::FuncOp>(calleeName);
+  if (!callee)
+    llvm::report_fatal_error(
+        llvm::formatv("couldn't find runtime function named {0}", calleeName));
+  return callee;
 }
 
 struct LowerIncrement
@@ -108,17 +90,14 @@ struct LowerIncrement
   LogicalResult
   matchAndRewrite(towerRuntime::IncrementCountOp op, OpAdaptor adaptor,
                   ConversionPatternRewriter &rewriter) const override {
-    // Increment the count
-    auto i64Ty = rewriter.getI64Type();
-    ContextStructBuilder contextStructBuilder(adaptor.getInput());
-    auto count = contextStructBuilder.count(rewriter, op->getLoc());
-    auto constOp = rewriter.create<arith::ConstantOp>(
-        op->getLoc(), i64Ty, rewriter.getI64IntegerAttr(1));
-    auto increment =
-        rewriter.create<arith::AddIOp>(op->getLoc(), constOp, count);
-    contextStructBuilder.setCount(rewriter, op->getLoc(), increment);
+    Location loc = op.getLoc();
+    ContextStructBuilder ctx(adaptor.getInput());
+    Value count = ctx.count(rewriter, loc);
+    Value one = arith::ConstantIntOp::create(rewriter, loc, 1, 64);
+    Value increment = arith::AddIOp::create(rewriter, loc, one, count);
+    ctx.setCount(rewriter, loc, increment);
 
-    rewriter.replaceOp(op, mlir::Value(contextStructBuilder));
+    rewriter.replaceOp(op, Value(ctx));
     return success();
   }
 };
@@ -134,37 +113,31 @@ struct LowerCheckSwap : public OpConversionPattern<towerRuntime::CheckSwapOp> {
   LogicalResult
   matchAndRewrite(towerRuntime::CheckSwapOp op, OpAdaptor adaptor,
                   ConversionPatternRewriter &rewriter) const override {
-    ContextStructBuilder contextStructBuilder(adaptor.getInput());
-    Value count = contextStructBuilder.count(rewriter, op->getLoc());
-    Value limit = contextStructBuilder.limit(rewriter, op->getLoc());
-
-    Value isCountGreaterEqualLimit = rewriter.create<arith::CmpIOp>(
-        op.getLoc(), arith::CmpIPredicate::uge, count, limit);
+    Location loc = op.getLoc();
+    Value input = adaptor.getInput();
+    ContextStructBuilder ctx(input);
+    Value count = ctx.count(rewriter, loc);
+    Value limit = ctx.limit(rewriter, loc);
+    Value overBudget = arith::CmpIOp::create(
+        rewriter, loc, arith::CmpIPredicate::uge, count, limit);
+    func::FuncOp swap = lookupRuntimeFunction(symbolTable, "swap");
 
     rewriter.replaceOpWithNewOp<scf::IfOp>(
-        op, isCountGreaterEqualLimit,
-        /*thenBuilder*/
-        [input = adaptor.getInput(),
-         symbolTable = this->symbolTable](OpBuilder &b, Location loc) {
-          ContextStructBuilder contextStructBuilder(input);
-          func::FuncOp callee = lookupRuntimeFunction(symbolTable, "swap");
+        op, overBudget,
+        /*thenBuilder=*/[input, swap](OpBuilder &b, Location loc) {
+          ContextStructBuilder ctx(input);
+          // Suspend the player and resume the host.
+          Value thread = ctx.threadCtx(b, loc);
+          Value main = ctx.mainCtx(b, loc);
+          func::CallOp::create(b, loc, swap, ValueRange({thread, main}));
 
-          // call swap(/*from*/ thread, /*to*/ main);
-          Value threadCtx = contextStructBuilder.threadCtx(b, loc);
-          Value mainCtx = contextStructBuilder.mainCtx(b, loc);
-          b.create<func::CallOp>(loc, callee, ValueRange({threadCtx, mainCtx}));
-
-          // once the game swaps back, reset instruction count to 0
-          auto i64Ty = IntegerType::get(b.getContext(), 64);
-          auto constOp =
-              b.create<arith::ConstantOp>(loc, i64Ty, b.getI64IntegerAttr(0));
-          contextStructBuilder.setCount(b, loc, constOp);
-
-          b.create<scf::YieldOp>(loc, Value(contextStructBuilder));
+          // When the host resumes the player, reset the instruction count.
+          Value zero = arith::ConstantIntOp::create(b, loc, 0, 64);
+          ctx.setCount(b, loc, zero);
+          scf::YieldOp::create(b, loc, Value(ctx));
         },
-        /*elseBuilder*/
-        [input = adaptor.getInput()](OpBuilder &b, Location loc) {
-          b.create<scf::YieldOp>(loc, input);
+        /*elseBuilder=*/[input](OpBuilder &b, Location loc) {
+          scf::YieldOp::create(b, loc, input);
         });
     return success();
   }
@@ -200,19 +173,18 @@ struct ToRuntimeCall : public OpConversionPattern<OpTy> {
                   ConversionPatternRewriter &rewriter) const override {
     func::FuncOp callee = lookupRuntimeFunction(symbolTable, calleeName);
 
-    // promote tower runtime context to stack
-    LLVMTypeConverter llvmTypeConverter(rewriter.getContext());
-    auto ptrTy = LLVM::LLVMPointerType::get(rewriter.getContext());
-    Value one = rewriter.create<LLVM::ConstantOp>(
-        op.getLoc(), llvmTypeConverter.convertType(rewriter.getIndexType()),
-        rewriter.getIntegerAttr(rewriter.getIndexType(), 1));
-    Value allocated = rewriter.create<LLVM::AllocaOp>(
-        op.getLoc(), ptrTy, getTowerRuntimeContextType(rewriter.getContext()),
-        one, /*alignment=*/0);
-    rewriter.create<LLVM::StoreOp>(op.getLoc(), adaptor.getInput(), allocated);
-
-    // call runtime function with pointer to promoted context
-    rewriter.replaceOpWithNewOp<func::CallOp>(op, callee, allocated);
+    // The runtime takes a pointer, so materialize the context on the stack.
+    Location loc = op.getLoc();
+    MLIRContext *context = rewriter.getContext();
+    LLVMTypeConverter llvmTypeConverter(context);
+    auto ptrTy = LLVM::LLVMPointerType::get(context);
+    Type indexTy = llvmTypeConverter.convertType(rewriter.getIndexType());
+    Value one = LLVM::ConstantOp::create(rewriter, loc, indexTy, 1);
+    Value storage = LLVM::AllocaOp::create(
+        rewriter, loc, ptrTy, getTowerRuntimeContextType(context), one,
+        /*alignment=*/0);
+    LLVM::StoreOp::create(rewriter, loc, adaptor.getInput(), storage);
+    rewriter.replaceOpWithNewOp<func::CallOp>(op, callee, storage);
     return success();
   }
 
@@ -242,10 +214,38 @@ void addRuntimeFunctionPrototypes(
     auto functionType = FunctionType::get(context, runtimeFunction.inputs,
                                           runtimeFunction.results);
     auto functionOp =
-        builder.create<func::FuncOp>(loc, runtimeFunction.name, functionType);
+        func::FuncOp::create(builder, loc, runtimeFunction.name, functionType);
     functionOp.setPrivate();
   }
 }
+
+// A branch can pass a !tower_runtime.ctx to a successor block, for example
+// to carry the current context into the next loop iteration. Convert the
+// arguments of every block so branches pass the lowered LLVM struct to
+// destinations that expect it, and update the function signature to match
+// the converted entry block and result types.
+struct ConvertFunction : OpConversionPattern<func::FuncOp> {
+  using OpConversionPattern::OpConversionPattern;
+
+  LogicalResult
+  matchAndRewrite(func::FuncOp op, OpAdaptor,
+                  ConversionPatternRewriter &rewriter) const override {
+    const TypeConverter &converter = *getTypeConverter();
+    TypeConverter::SignatureConversion signature(op.getNumArguments());
+    SmallVector<Type> results;
+    if (failed(converter.convertSignatureArgs(op.getArgumentTypes(),
+                                              signature)) ||
+        failed(converter.convertTypes(op.getResultTypes(), results)) ||
+        failed(rewriter.convertRegionTypes(&op.getBody(), converter,
+                                           &signature)))
+      return failure();
+
+    auto type = FunctionType::get(op.getContext(), signature.getConvertedTypes(),
+                                  results);
+    rewriter.modifyOpInPlace(op, [&] { op.setType(type); });
+    return success();
+  }
+};
 } // namespace
 
 struct TowerRuntimeToLLVMConversionPass
@@ -293,15 +293,13 @@ struct TowerRuntimeToLLVMConversionPass
     target.addLegalDialect<memref::MemRefDialect>();
     target.addLegalOp<func::ReturnOp>();
 
-    // Ensure function signatures and all call ops are converted
-    populateFunctionOpInterfaceTypeConversionPattern<func::FuncOp>(
-        patterns, typeConverter);
+    patterns.add<ConvertFunction>(typeConverter, context);
     target.addDynamicallyLegalOp<func::FuncOp>([&](func::FuncOp op) {
       return typeConverter.isSignatureLegal(op.getFunctionType()) &&
              typeConverter.isLegal(&op.getBody());
     });
 
-    // Ensure calls sites are converted
+    // Convert call sites.
     populateCallOpTypeConversionPattern(patterns, typeConverter);
     target.addDynamicallyLegalOp<func::CallOp>([&](func::CallOp op) {
       return typeConverter.isSignatureLegal(op.getCalleeType());

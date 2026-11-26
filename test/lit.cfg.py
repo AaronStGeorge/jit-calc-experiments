@@ -12,8 +12,8 @@ from lit.llvm import llvm_config
 # name: The name of this test suite.
 config.name = "JIT_CALC_EXPERIMENTS"
 
-# not sure what this does, but it's needed
-config.test_format = lit.formats.ShTest(not llvm_config.use_lit_shell)
+# Use lit's internal shell; external execution is deprecated in LLVM 23.
+config.test_format = lit.formats.ShTest()
 
 # suffixes: A list of file extensions to treat as test files.
 config.suffixes = [".mlir"]

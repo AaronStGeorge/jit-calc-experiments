@@ -21,9 +21,6 @@ function(jit_calc_add_bundled_llvm)
   # LLVM's own minimum CMake version predates CMP0126; keep the normal
   # variables below when its set(... CACHE ...) calls initialize the cache.
   set(CMAKE_POLICY_DEFAULT_CMP0126 NEW)
-  # Keep LLVM/MLIR at the pinned revision's default C++ standard. In C++20
-  # mode libstdc++ 15 rejects MLIR's Dominance.cpp iterator instantiation.
-  set(CMAKE_CXX_STANDARD 17)
   set(LLVM_ENABLE_PROJECTS mlir)
   set(LLVM_TARGETS_TO_BUILD host)
   set(LLVM_RUNTIME_OUTPUT_INTDIR "${llvm_build}/${CMAKE_CFG_INTDIR}/bin")

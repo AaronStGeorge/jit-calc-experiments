@@ -8,6 +8,8 @@ include(cmake/JitCalcArch.cmake)
 set(CMAKE_BUILD_WITH_INSTALL_NAME_DIR ON)
 
 set(CMAKE_CXX_STANDARD 20 CACHE STRING "C++ standard to conform to")
+# Match the vendored MLIR targets when reusing their precompiled headers.
+set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_C_STANDARD 11 CACHE STRING "C standard to conform to")
 
 # MLIR uses FindPython3 and FindPython; keep nanobind on the same interpreter.
@@ -56,7 +58,9 @@ include_directories(${LLVM_INCLUDE_DIRS})
 include_directories(${MLIR_INCLUDE_DIRS})
 include_directories(${PROJECT_SOURCE_DIR}/include)
 include_directories(${PROJECT_BINARY_DIR}/include)
-add_definitions(${LLVM_DEFINITIONS})
+# LLVM exports a space-separated flag string; pass each macro separately.
+separate_arguments(JIT_CALC_LLVM_DEFINITION_FLAGS NATIVE_COMMAND "${LLVM_DEFINITIONS}")
+add_definitions(${JIT_CALC_LLVM_DEFINITION_FLAGS})
 
 add_subdirectory(include)
 add_subdirectory(lib)

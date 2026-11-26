@@ -1,10 +1,16 @@
 # LLVM/MLIR revision and build notes
 
-The project vendors **LLVM/MLIR `22.0.0git` at `377148fd60df55e486dc72b26248006ae092725a`** ([LLVM fork revision](https://github.com/AaronStGeorge/llvm-project/commit/377148fd60df55e486dc72b26248006ae092725a)) and **raylib 6.0 at `dbc56a87da87d973a9c5baa4e7438a9d20121d28`** as Git submodules. Use `git submodule status` to check the pins.
+The project vendors **LLVM/MLIR `24.0.0git` at `6e144d9372f2169817e07f6a828438ec0880f34f`** ([upstream LLVM revision](https://github.com/llvm/llvm-project/commit/6e144d9372f2169817e07f6a828438ec0880f34f)) and **raylib 6.0 at `dbc56a87da87d973a9c5baa4e7438a9d20121d28`** as Git submodules. Use `git submodule status` to check the pins.
 
 The [dependency helpers](../cmake/JitCalcDependencies.cmake) follow [IREE's bundled LLVM pattern](https://github.com/iree-org/iree/blob/318812edbe0bc0d937c15609e8d789c211343668/build_tools/cmake/iree_llvm.cmake): add the vendored source with `EXCLUDE_FROM_ALL` and use real CMake targets, not `find_package`. Jit-calc uses functions to scope dependency options and exports only the LLVM/MLIR settings its own CMake helpers need. The LLVM sub-build enables only MLIR and the host backend. Player-code WebAssembly generation uses a separately supplied prebuilt `clang` with `wasm-ld`; neither Clang nor LLD is built from the submodule.
 
-## Verified: minimal vendored build on macOS ARM64
+## Verified: upstream LLVM 24 snapshot on macOS ARM64 and Linux x86_64
+
+Both native builds passed the vendored Release build, 5 lit tests, 4 TowerRuntime integration tests, `count-to-n`, and the Python → MLIR → JIT Fibonacci smoke test. The tested snapshot builds LLVM/MLIR and jit-calc in ISO C++20; the former LLVM C++17 override is no longer needed with libstdc++ 15. The Linux worker configured with `-DCMAKE_CXX_SCAN_FOR_MODULES=OFF` to avoid a Clang module-scanner failure. See the [verification record](sources/llvm-6e144d9-verification.md) for logs and scope. Linux ARM64 has not been verified at this pin.
+
+Existing clones should run `git submodule sync -- third_party/llvm-project` before `git submodule update --init --recursive` to switch from the old fork URL to upstream. Configure a fresh build directory for the new revision.
+
+## Historical: minimal vendored build on macOS ARM64
 
 The Release build in `build/vendored` completed, and `check-jit-calc-experiments` passed all five tests on 2026-11-21. The run used vendored LLVM/MLIR and raylib, with AArch64 as the only LLVM backend. It used `/opt/homebrew/opt/llvm/bin/clang` for WebAssembly fixtures; it did not build Clang or LLD from source.
 
@@ -37,4 +43,4 @@ This command is retained for reference when reproducing the pre-vendoring result
 
 [PR #2](https://github.com/AaronStGeorge/jit-calc-experiments/pull/2) removed the ARM64-only build blocker. Before rebasing, the separate backends passed the vendored default build, `check-jit-calc-experiments` (5/5 lit tests and the standalone coroutine state check), and `count-to-n` (`return_val=9`) on both Apple ARM64 (observed locally) and Linux x86_64 (reported by the Fabric worker). The Linux worker built both GUI demos but could not verify startup on its headless machine.
 
-The vendored LLVM/MLIR sub-build uses C++17 to avoid a libstdc++ 15 build error at the pinned revision; jit-calc itself still uses C++20.
+At the previous LLVM `377148fd` pin, the sub-build used C++17 to avoid a libstdc++ 15 build error while jit-calc used C++20.

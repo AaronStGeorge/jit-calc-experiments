@@ -29,8 +29,6 @@ declare_mlir_python_extension(JitCalcPythonSources.WasmExtension
     WasmExtension.cpp
   EMBED_CAPI_LINK_LIBS
     WasmCAPI
-  PYTHON_BINDINGS_LIBRARY
-    nanobind
 )
 
 #### TOWER_RUNTIME
@@ -51,8 +49,6 @@ declare_mlir_python_extension(JitCalcPythonSources.TowerRuntimeExtension
     TowerRuntimeExtension.cpp
   EMBED_CAPI_LINK_LIBS
     TowerRuntimeCAPI
-  PYTHON_BINDINGS_LIBRARY
-    nanobind
 )
 
 ################################################################################
