@@ -2,6 +2,10 @@
 
 Use `vibesperimentation` as the default base branch for new work, rebases, and pull requests unless explicitly directed otherwise.
 
+# Supported targets
+
+Target ARM64 (AArch64) on macOS and Linux, and x86_64 on Linux. Other OS and architecture combinations, including Intel macOS, are not required.
+
 # Experiment boundaries
 
 Keep experiments separate by default so they can evolve independently. Keep experiment-specific code with its experiment and use separate assembly files for different CPU architectures. Shared code is fine when there is a clear reason to share it, such as common infrastructure.
