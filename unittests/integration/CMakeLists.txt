@@ -1,3 +1,4 @@
+# Build the player-code fixtures and their TowerRuntime integration tests.
 
 function(fixture LIB_NAME FILE)
     add_player_code_library(${LIB_NAME} ${FILE} PREFIX ${LIB_NAME})
@@ -14,5 +15,5 @@ target_link_libraries(IntegrationTests PRIVATE
     add
     simple_cond
     fib
-    TowerRuntimeStatic
+    TowerRuntime
 )

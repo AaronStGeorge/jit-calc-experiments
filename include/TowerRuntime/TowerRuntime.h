@@ -1,27 +1,36 @@
+// Context layouts and entry points used by TowerRuntime and generated MLIR code.
+
 #ifndef TOWER_RUNTIME_H
 #define TOWER_RUNTIME_H
 
-#include <cstddef>
-#include <cstdint>
+#include <stddef.h>
+#include <stdint.h>
 
+// Keep this layout in sync with tower_runtime_<arch>.S.
 struct MachineState {
-  // stack pointer
+  // Stack pointer.
   uint64_t sp;
-  // link register
+#if defined(__aarch64__) || defined(__arm64__)
+  // Link register.
   uint64_t lr;
-  // frame pointer
+  // Frame pointer.
   uint64_t fp;
-  // callee-saved registers
-  uint64_t x19;
-  uint64_t x20;
-  uint64_t x21;
-  uint64_t x22;
-  uint64_t x23;
-  uint64_t x24;
-  uint64_t x25;
-  uint64_t x26;
-  uint64_t x27;
-  uint64_t x28;
+  // Callee-saved general-purpose registers.
+  uint64_t x19, x20, x21, x22, x23, x24, x25, x26, x27, x28;
+  // Callee-saved floating-point registers and FP control register.
+  uint64_t d8_to_d15[8];
+  uint64_t fpcr;
+#elif defined(__x86_64__) && !defined(__ILP32__)
+  // Address at which to resume execution.
+  uint64_t ip;
+  // Callee-saved general-purpose registers, including the frame pointer rbp.
+  uint64_t rbp, rbx, r12, r13, r14, r15;
+  // SSE and x87 floating-point control state.
+  uint32_t mxcsr;
+  uint16_t x87_control;
+#else
+#error Unsupported TowerRuntime target ABI
+#endif
 };
 
 // `TowerRuntimeContext` must be ABI compatible with the MLIR type
@@ -38,6 +47,13 @@ struct TowerRuntimeContext {
   uint64_t count;
   uint64_t limit;
 };
+
+// The assembly uses the first two offsets; MLIR uses the whole layout.
+static_assert(offsetof(TowerRuntimeContext, main) == 0);
+static_assert(offsetof(TowerRuntimeContext, thread) == 8);
+static_assert(offsetof(TowerRuntimeContext, count) == 16);
+static_assert(offsetof(TowerRuntimeContext, limit) == 24);
+static_assert(sizeof(TowerRuntimeContext) == 32);
 
 // launchpad handles setup for, calling into, and returning from the generated
 // code.
@@ -75,7 +91,8 @@ bool start(TowerRuntimeContext *ctx,
            void (*entry)(TowerRuntimeContext *, void *, void *), void *in,
            void *out);
 
-// Swap from MachineState in `from`, to MachineState in `to`
+// Swap from MachineState in `from`, to MachineState in `to`.
+// Returns false on yield and true on stop.
 bool swap(MachineState *from, MachineState *to);
 
 // Intended to be called from the launchpad function, let's the main know thread

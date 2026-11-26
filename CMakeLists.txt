@@ -1,5 +1,9 @@
+# Configure the jit-calc experiments, vendored dependencies, and test targets.
+
 cmake_minimum_required(VERSION 3.25)
 project(jit-calc-experiments LANGUAGES CXX C ASM)
+
+include(cmake/JitCalcArch.cmake)
 
 set(CMAKE_BUILD_WITH_INSTALL_NAME_DIR ON)
 

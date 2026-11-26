@@ -49,3 +49,19 @@ The from-scratch build in `build/standalone-free` completed all 4,527 Ninja step
 ## [2026-11-25] lint | Remove retired documentation links
 
 Removed the root README and LLVM build verification record, and cleaned up links to them.
+
+## [2026-11-25] verify | Separate coroutine backends and rebase PR #2
+
+Recorded the [architecture options and cross-platform results](llvm-build.md#coroutine-builds-on-arm64-and-x86_64) for PR #2. Rebased onto `vibesperimentation` without restoring the retired documentation, and recorded the default base branch in `AGENTS.md`.
+
+## [2026-11-25] update | Select coroutine assembly automatically
+
+Removed the redundant `JIT_CALC_ARCH` config option. CMake selects the assembly from its target architecture.
+
+## [2026-11-25] update | Make x86_64 coroutine backends Linux-only
+
+Removed the Mach-O symbol handling from both x86_64 backends. CMake rejects x86_64 macOS targets; macOS builds use ARM64.
+
+## [2026-11-25] update | Build TowerRuntime as one static library
+
+Renamed the static target to `TowerRuntime` and removed the unused shared target and its lit substitution. The demos and integration tests link the static library.
