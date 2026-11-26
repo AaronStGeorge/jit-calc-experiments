@@ -15,9 +15,9 @@ extern "C" {
 typedef void (*coroutine_entry)(struct context *caller, struct context *self,
                                 void *arg_ptr, void *return_ptr);
 
-// Prepare a context on a caller-owned stack large enough for the entry function
-// and its callees. Keep the stack alive until the coroutine stops, and use the
-// context only on the same OS thread.
+// The caller owns the stack and must keep it alive until the coroutine stops.
+// Supply a buffer large enough for the entry function and everything it calls.
+// Contexts are cooperative and must stay on the same OS thread.
 void coroutine_init(struct context *ctx, void *stack, size_t stack_size,
                     coroutine_entry entry);
 
@@ -28,8 +28,8 @@ bool start(struct context *from, struct context *to, void *arg_ptr,
 // Resume a suspended context. Returns false on yield and true on stop.
 bool swap(struct context *from, struct context *to);
 
-// Finish the current coroutine and resume its caller. An entry function must
-// call stop instead of returning. Do not resume a stopped context.
+// Finish the current coroutine and resume its caller.
+// Entry functions must stop instead of returning. Do not resume a stopped context.
 void stop(struct context *from, struct context *to);
 
 #ifdef __cplusplus
