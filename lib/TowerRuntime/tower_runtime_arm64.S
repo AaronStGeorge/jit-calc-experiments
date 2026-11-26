@@ -15,6 +15,8 @@
 .globl CNAME(swap), CNAME(start), CNAME(stop)
 .p2align 2
 
+// Save machine state into the context at ctx. AArch64 cannot store sp
+// directly, so use x11 to transfer it to memory.
 .macro SAVE ctx
 	MOV x11, sp
 	STR x11, [\ctx]
@@ -33,6 +35,8 @@
 	STR x11, [\ctx, #168]
 .endm
 
+// Restore machine state from ctx. Load the saved stack pointer into x11
+// first, since AArch64 cannot load it directly into sp.
 .macro RESTORE ctx, fresh=0
 	LDR x11, [\ctx]
 	MOV sp, x11
@@ -53,15 +57,19 @@
 	.endif
 .endm
 
+// Save the "from" context and resume the "to" context, returning false
+// to the resumed context to report a yield.
 CNAME(swap):
 	SAVE x0
 	RESTORE x1
 	MOV x0, 0
 	RET
 
+// Switch from main into a fresh coroutine whose stack and entry point
+// have already been initialized by the caller.
 CNAME(start):
+	// Load the main (from) and thread (to) contexts from TowerRuntimeContext.
 	// Pass x0-x3 unchanged, and inherit the caller's FP environment.
-	// x0 is TowerRuntimeContext *, containing the two MachineState pointers.
 	LDP x9, x10, [x0]
 	SAVE x9
 	RESTORE x10, 1
@@ -69,8 +77,10 @@ CNAME(start):
 	BLR x9
 	BRK #0 // Entry functions must transfer control back with stop.
 
+// Switch back to main without saving the finished coroutine. Return true
+// to the resumed main context to report completion.
 CNAME(stop):
-	LDR x9, [x0] // Restore main; the finished coroutine is discarded.
+	LDR x9, [x0]
 	RESTORE x9
 	MOV x0, 1
 	RET

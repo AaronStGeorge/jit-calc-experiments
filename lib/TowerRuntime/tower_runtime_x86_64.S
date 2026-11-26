@@ -47,6 +47,8 @@
 	.endif
 .endm
 
+// Save the "from" context and resume the "to" context, returning false
+// to the resumed context to report a yield.
 CNAME(swap):
 	SAVE %rdi
 	RESTORE %rsi
@@ -54,9 +56,11 @@ CNAME(swap):
 	pushq %r11
 	retq
 
+// Switch from main into a fresh coroutine whose stack and entry point
+// have already been initialized by the caller.
 CNAME(start):
+	// Load the main (from) and thread (to) contexts from TowerRuntimeContext.
 	// Pass rdi/rsi/rdx/rcx unchanged, and inherit the caller's FP environment.
-	// rdi is TowerRuntimeContext *, containing the two MachineState pointers.
 	movq 0(%rdi), %r9
 	movq 8(%rdi), %r10
 	SAVE %r9
@@ -65,8 +69,10 @@ CNAME(start):
 	callq *%r11
 	ud2 // Entry functions must transfer control back with stop.
 
+// Switch back to main without saving the finished coroutine. Return true
+// to the resumed main context to report completion.
 CNAME(stop):
-	movq 0(%rdi), %r9 // Restore main; the finished coroutine is discarded.
+	movq 0(%rdi), %r9
 	RESTORE %r9
 	movl $1, %eax
 	pushq %r11
