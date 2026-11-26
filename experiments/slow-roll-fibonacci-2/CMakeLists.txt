@@ -1,3 +1,5 @@
+# Build the driver that JIT-compiles the instrumented Fibonacci code.
+
 set(LLVM_LINK_COMPONENTS
   Core
   OrcJIT
@@ -16,7 +18,7 @@ target_link_libraries(srf2-driver PRIVATE
   MLIRSupport
   Wasm
   WasmTransforms
-  TowerRuntimeStatic
+  TowerRuntime
   )
 mlir_check_all_link_libraries(srf2-driver)
 # Don't ask me what the fuck this witchcraft

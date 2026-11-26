@@ -61,3 +61,7 @@ Removed the redundant `JIT_CALC_ARCH` config option. CMake selects the assembly 
 ## [2026-11-25] update | Make x86_64 coroutine backends Linux-only
 
 Removed the Mach-O symbol handling from both x86_64 backends. CMake rejects x86_64 macOS targets; macOS builds use ARM64.
+
+## [2026-11-25] update | Build TowerRuntime as one static library
+
+Renamed the static target to `TowerRuntime` and removed the unused shared target and its lit substitution. The demos and integration tests link the static library.
