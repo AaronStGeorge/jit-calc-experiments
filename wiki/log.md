@@ -53,3 +53,7 @@ Removed the root README and LLVM build verification record, and cleaned up links
 ## [2026-11-25] verify | Separate coroutine backends and rebase PR #2
 
 Recorded the [architecture options and cross-platform results](llvm-build.md#coroutine-builds-on-arm64-and-x86_64) for PR #2. Rebased onto `vibesperimentation` without restoring the retired documentation, and recorded the default base branch in `AGENTS.md`.
+
+## [2026-11-25] update | Select coroutine assembly automatically
+
+Removed the redundant `JIT_CALC_ARCH` config option. CMake selects the assembly from its target architecture.

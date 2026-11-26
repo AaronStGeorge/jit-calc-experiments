@@ -33,7 +33,7 @@ This command is retained for reference when reproducing the pre-vendoring result
 
 ## Coroutine builds on ARM64 and x86_64
 
-[HomeRolledCoroutines](../lib/HomeRolledCoroutines/) and [TowerRuntime](../lib/TowerRuntime/) each have separate ARM64 and x86_64 assembly files. The [CMake architecture setting](../cmake/JitCalcArch.cmake) defaults to `JIT_CALC_ARCH=AUTO`. To pin it, set `-DJIT_CALC_ARCH=ARM64` or `-DJIT_CALC_ARCH=X86_64` when configuring. It must match the compiler target; it does not set up cross-compilation. The x86_64 backend does not support CET shadow stacks.
+[HomeRolledCoroutines](../lib/HomeRolledCoroutines/) and [TowerRuntime](../lib/TowerRuntime/) each have separate ARM64 and x86_64 assembly files. [CMake selects the assembly automatically](../cmake/JitCalcArch.cmake) from the target architecture. The build uses one architecture at a time and does not support macOS universal binaries. The x86_64 backend does not support CET shadow stacks.
 
 [PR #2](https://github.com/AaronStGeorge/jit-calc-experiments/pull/2) removed the ARM64-only build blocker. Before rebasing, the separate backends passed the vendored default build, `check-jit-calc-experiments` (5/5 lit tests and the standalone coroutine state check), and `count-to-n` (`return_val=9`) on both Apple ARM64 (observed locally) and Linux x86_64 (reported by the Fabric worker). The Linux worker built both GUI demos but could not verify startup on its headless machine.
 
